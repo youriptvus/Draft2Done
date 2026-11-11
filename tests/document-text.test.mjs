@@ -35,15 +35,27 @@ test("similar references with DOI prefixes are not silently discarded", () => {
   assert.equal((output.match(/Same study title/g) || []).length, 2);
 });
 
-test("manual citations remain in bibliography alongside accepted generated citations", () => {
+test("used citations remain in bibliography when excluded from future generation", () => {
   const project = createProject("Paper", "Existing argument.");
-  project.sources = [source("a", "Generated support"), source("b", "Manual support"), source("c", "Excluded support")];
+  project.sources = [source("a", "Generated support"), source("b", "Manual support"), source("c", "Excluded but cited support"), source("d", "Unused excluded source")];
+  project.sources[0].included = false;
   project.sources[2].included = false;
+  project.sources[3].included = false;
   project.contributions = [{ sourceIds: ["a"] }];
   project.citedSourceIds = ["b", "c"];
-  assert.equal(bibliography(project).length, 2);
+  assert.equal(bibliography(project).length, 3);
+  assert.match(exportText(project), /Generated support/);
   assert.match(exportText(project), /Manual support/);
-  assert.doesNotMatch(exportText(project), /Excluded support/);
+  assert.match(exportText(project), /Excluded but cited support/);
+  assert.doesNotMatch(exportText(project), /Unused excluded source/);
+});
+
+test("excluding an uncited source keeps it out of the default library bibliography", () => {
+  const project = createProject("Paper", "Own argument.");
+  project.sources = [source("a", "Included background"), { ...source("b", "Excluded background"), included: false }];
+  assert.equal(bibliography(project).length, 1);
+  assert.match(exportText(project), /Included background/);
+  assert.doesNotMatch(exportText(project), /Excluded background/);
 });
 
 test("repeated source records produce only one bibliography entry", () => {

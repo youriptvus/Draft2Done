@@ -228,7 +228,7 @@ final class AppUpdates {
         }
         connection.setConnectTimeout(15000); connection.setReadTimeout(45000);
         connection.setInstanceFollowRedirects(false);
-        connection.setRequestProperty("User-Agent", "Draft2Done/0.1.0");
+        connection.setRequestProperty("User-Agent", AppVersion.userAgent(activity));
         connection.setRequestProperty("Accept", "application/vnd.github+json");
         return connection;
     }

@@ -1,6 +1,6 @@
 # Architecture
 
-Android 0.1.0 is a native Java host for a bundled browser UI. It does not depend on a remote website. Windows desktop work is deferred; the Python venv is unused by the APK.
+Android 0.1.2 is a native Java host for a bundled browser UI. It does not depend on a remote website. Windows desktop work is deferred; the Python venv is unused by the APK.
 
 | Area | Code | Responsibility |
 | --- | --- | --- |

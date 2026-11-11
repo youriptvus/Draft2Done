@@ -87,7 +87,9 @@ export async function readDocument(payload) {
         const content = await page.getTextContent();
         let line = "";
         for (const item of content.items) {
-          line += item.str + (item.hasEOL ? "\n" : " ");
+          // PDF.js supplies whitespace items. Adjacent glyph/font runs can be
+          // parts of one word (including fi/fl ligatures), so do not add gaps.
+          line += item.str + (item.hasEOL ? "\n" : "");
         }
         paragraphs.push(line.trim());
       }

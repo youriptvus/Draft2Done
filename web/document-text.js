@@ -11,7 +11,7 @@ export function bibliography(project) {
   ]);
   const seen = new Set();
   return (project.sources || [])
-    .filter((source) => source.included !== false && (used.has(source.id) || (contributions.length === 0 && used.size === 0)))
+    .filter((source) => used.has(source.id) || (source.included !== false && contributions.length === 0 && used.size === 0))
     .map((source) => citation(source, project.citationStyle).bibliography)
     .filter((entry) => {
       const key = referenceKey(entry);

@@ -2,7 +2,7 @@
 
 ## Start on your phone
 
-Install `dist/Draft2Done-0.1.0.apk` on Android 8 or later. It runs independently of VS Code and the user's PC. No PC model server, USB reverse, port forwarding or VPN is required for the primary AI route. The APK does not contain an on-phone language model.
+Install `current release/Draft2Done-0.1.2.apk` on Android 8 or later. It runs independently of VS Code and the user's PC. No PC model server, USB reverse, port forwarding or VPN is required for the primary AI route. The APK does not contain an on-phone language model.
 
 1. Import a TXT, Markdown, DOCX or text PDF, or create a workspace and paste writing you already started. Imports preserve the original separately from the working copy.
 2. Use **Set goal** for the word minimum, optional maximum, instructions and rubric. Reference sections and explicitly marked title blocks are excluded by default. End a title block with `---` or `<!-- title-end -->`; unmarked text is counted in full.
@@ -36,6 +36,8 @@ A usage-limit message can apply to an account or an individual app. The account 
 
 Research actions are separate from writing assistance. Enable **Online**, review the short query and select Crossref, PubMed or Wikipedia. Only that visible query goes to those APIs. Source metadata and available abstracts remain in the project. The optional **Ask ChatGPT** research brief sends the question and selected excerpts, never the full draft. Its optional web-search tool depends on model/account policy.
 
+When **Use web search** is selected, the request requires a search. If the service does not confirm completed search use, the app shows an error and saves no brief. Unsupported tools or account policies also produce an error. With search off, the brief uses the question and chosen excerpts; outside claims remain unverified. Always inspect the returned search status and links.
+
 **Record retrieved** verifies bibliographic existence, not claim truth. **Abstract retrieved** means an abstract or encyclopedia introduction was available, not the full publication. Open the source and check its methodology, scope, limitations and the claim you intend to make. Uncheck **Use** to exclude a source from generation. Writing requests use up to four relevant excerpts of 900 characters each; the library retains other saved sources.
 
 Complete's research plan lets you review short queries before searching and inspect the evidence before generation. Never infer that the AI has searched merely because it produced fluent text.
@@ -58,4 +60,4 @@ Advanced server settings are for an environment that already has a reachable Oll
 
 ## App updates
 
-Automatic checks are on by default, run at most once per day on app open, and target stable releases at `youriptvus/Draft2Done`. No draft or account token is sent to GitHub. A downloaded update must match its hash, package, increasing version code and signing certificate. Android asks for installation approval. No public release was published during development; an unavailable release is reported honestly.
+Automatic checks are on by default, run at most once per day on app open, and target stable releases at `youriptvus/Draft2Done`. No draft or account token is sent to GitHub. A downloaded update must match its hash, package, increasing version code and signing certificate. Android asks for installation approval. Version 0.1.2 uses version code 2 and can update 0.1.0/code 1 after the user publishes its APK and manifest. A phone already running the latest or a newer local build should report that it is up to date.

@@ -2,7 +2,7 @@
 
 Reviewed 2026-11-10 (America/New_York). No model was downloaded or changed during this research.
 
-For the actual remote phone, use the direct ChatGPT account route when eligible usage is available. Choose only a slug returned for that account. Local model names in this document are optional server choices, not ChatGPT model identifiers. The Samsung successfully authenticated and fetched its catalog, but actual plan inference was blocked by `subscription_sharing_usage_limit_exceeded`; no model is described as successfully tested through that account yet.
+For the actual remote phone, use the direct ChatGPT account route when eligible usage is available. Choose only a slug returned for that account. Local model names in this document are optional server choices, not ChatGPT model identifiers. The Samsung successfully authenticated and fetched its catalog. After historical usage-limit failures, actual Helper, continuation, regeneration and query-only research now pass; this establishes integration behavior, not a comparative model-quality benchmark.
 
 Recommendations should preserve an explicit user selection and distinguish the provider's capability claims from this application's tests. A catalog recommendation cannot guarantee factual correctness, source support or Writer DNA fidelity.
 
@@ -17,7 +17,7 @@ Guidance dated 2026-11-10, aligned with `web/model-policy.js` and official OpenA
 | `gpt-6.1-terra` | Natural writing | Clear, concise writing based on the material supplied |
 | `gpt-6-luna` | Efficient research | Focused tasks and efficient repeated use; review complex evidence closely |
 
-The actual signed-in Samsung catalog returned, in its observed order: `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6.1-terra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`. Model loading and selecting Astra were verified; completed writing/research inference remains unverified because of the observed usage limit. This list records availability for that account at that time, not availability for every user or a promise of unused quota.
+The actual signed-in Samsung catalog returned, in its observed order: `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6.1-terra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`. Model loading, selecting the recommendation and completed writing/query-only research were verified. This list records availability for that account at that time, not availability for every user or a promise of unused quota. Current web-tool verification is recorded separately in VERIFICATION.md.
 
 The app preserves the returned catalog and explicit user choice. Its recommendation selects only an eligible returned slug; older additional choices remain available for manual selection. Refresh the catalog after changing accounts. A catalog entry does not establish tool availability or waive a usage limit. [Plan-backed model catalog and terminal inference contract](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference)
 

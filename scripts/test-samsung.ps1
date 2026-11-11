@@ -1,6 +1,8 @@
 param([string]$Serial='',[switch]$Install,[switch]$UsbAI,[ValidateRange(1,65535)][int]$AdbServerPort=5038)
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'release-info.ps1')
+$releaseInfo=Get-Draft2DoneReleaseInfo $projectRoot
 $adb=Join-Path $projectRoot 'tools\android-sdk\platform-tools\adb.exe'
 $rows=& $adb -P $AdbServerPort devices -l
 $rows | Write-Host
@@ -16,9 +18,9 @@ $manufacturer=(& $adb -P $AdbServerPort -s $Serial shell getprop ro.product.manu
 if($manufacturer -ne 'samsung'){throw 'Selected device is not a Samsung; no installation performed.'}
 $testRoot=Join-Path $projectRoot 'test-results\samsung'
 New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
-$info=@{manufacturer=$manufacturer;model=((& $adb -P $AdbServerPort -s $Serial shell getprop ro.product.model).Trim());android=((& $adb -P $AdbServerPort -s $Serial shell getprop ro.build.version.release).Trim());adbServerPort=$AdbServerPort;time=[DateTime]::UtcNow.ToString('o')}
+$info=@{manufacturer=$manufacturer;model=((& $adb -P $AdbServerPort -s $Serial shell getprop ro.product.model).Trim());android=((& $adb -P $AdbServerPort -s $Serial shell getprop ro.build.version.release).Trim());adbServerPort=$AdbServerPort;version=$releaseInfo.VersionName;versionCode=$releaseInfo.VersionCode;package=$releaseInfo.PackageName;time=[DateTime]::UtcNow.ToString('o')}
 $info | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $testRoot 'device.json') -Encoding UTF8
-if($Install){& $adb -P $AdbServerPort -s $Serial install -r (Join-Path $projectRoot 'dist\Draft2Done-0.1.0.apk');if($LASTEXITCODE -ne 0){throw 'APK install failed; existing app was not uninstalled.'}}
+if($Install){& $adb -P $AdbServerPort -s $Serial install -r (Join-Path (Join-Path $projectRoot 'dist') $releaseInfo.ApkFileName);if($LASTEXITCODE -ne 0){throw 'APK install failed; existing app was not uninstalled.'}}
 if($UsbAI){& $adb -P $AdbServerPort -s $Serial reverse tcp:11435 tcp:11435;if($LASTEXITCODE -ne 0){throw 'USB reverse failed.'}}
 & $adb -P $AdbServerPort -s $Serial shell am start -W -n io.draft2done.app/.MainActivity
 if($LASTEXITCODE -ne 0){throw 'App launch failed.'}

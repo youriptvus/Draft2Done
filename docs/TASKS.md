@@ -1,4 +1,4 @@
-# Draft2Done 0.1.0 implementation tracker
+# Draft2Done 0.1.2 implementation tracker
 
 The current deliverable is a signed Android APK. Windows desktop work is deferred at the user's request. See `DECISIONS.md` for all user changes and `VERIFICATION.md` for executed checks and outstanding live tests.
 
@@ -35,8 +35,10 @@ Windows 10 Pro; AMD Ryzen 3 2200G (four cores); about 7 GB usable system RAM. NV
 - [x] Optional personal ChatGPT research connection, encrypted native credentials, account/model picker, consent preview, and saved cited briefs.
 - [x] Automatic update checks enabled by default for youriptvus/Draft2Done; signed-package verification before Android installation.
 - [x] Live ChatGPT consent, signed identity, encrypted session persistence and account model catalog.
-- [ ] Successful live ChatGPT research request: actual requests are blocked by subscription_sharing_usage_limit_exceeded (account or app usage controls). No automatic retry or paid fallback.
-- [ ] Live GitHub update delivery (no public release available; no publication authorized).
+- [x] Successful live ChatGPT writing and query-only research after prior account/app usage-limit failures; no automatic retry or paid fallback. Web-search verification is tracked separately below.
+- [x] Verify the user-published public v0.1.0 release, manifest and independently downloaded signed APK against the local build.
+- [x] Fresh Samsung check of the public release: five live checks pass and the same-version app correctly reports up to date.
+- [ ] Future real higher-version update installation after a higher versionCode is published.
 
 ## Current limitations
 Windows deferred. No model bundled or on-phone inference engine. Text import does not retain document page layout, images or tables; scanned PDFs need OCR. Chicago is author-date, not footnotes. Citations and factual claims need review. OpenAlex and Semantic Scholar are documented future providers. See USER-GUIDE.md and PROVIDERS.md.
@@ -45,7 +47,7 @@ Windows deferred. No model bundled or on-phone inference engine. Text import doe
 - [x] Dark theme is the default; light remains optional. The elegant welcome screen opens with recent papers below.
 - [x] Move the paper illustration above the green tagline to remove overlap.
 - [x] APK asset path, system-bar insets/colors and keyboard focus issues found on Samsung were fixed.
-- [x] 76 JavaScript tests, 18 OAuth protocol, 7 lifecycle, 39 DNS/registration/research-status, 53 assist/session and 52 update checks passed; browser and Samsung reports are recorded in VERIFICATION.md.
+- [x] 77 JavaScript tests, 38 OAuth/stream/citation, 7 lifecycle, 39 DNS/registration/research-status, 53 assist/session, 12 research-request and 52 update checks passed; browser and Samsung reports are recorded in VERIFICATION.md.
 
 ## Full-brief completion pass
 - [x] Show draft outline, gaps, research questions and unfinished observations in Helper.
@@ -64,8 +66,10 @@ Windows deferred. No model bundled or on-phone inference engine. Text import doe
 - [x] Run the expanded regression against the final signed APK and record results.
 - [x] Complete personal ChatGPT consent and validate a real connected account/model catalog.
 - [x] Diagnose native DNS failure, preserve pending registrations, clear stale login errors and handle actual plan-quota failure without saving a partial brief.
-- [ ] Successful plan inference after the relevant account/app limit permits requests; web-search policy, live refresh/revocation remain unverified.
-- [ ] User-managed publication and live GitHub delivery test after account access permits it. The authenticated GitHub API reported account suspension; commits/uploads are now manual by the user's instruction.
+- [x] Successful actual Helper/Complete/regeneration/query-only research and real token refresh/sign-out revocation. Web-search citation verification remains tracked below.
+- [x] User-managed publication completed; public API and both release assets verified anonymously. Commits/uploads remain manual by the user's instruction.
+- [x] Finish the Samsung public-release check after USB recovery, including automatic preference and actual version/hash/status.
+- [ ] Verify a real upgrade when a higher version is published.
 
 ## Standalone Android deployment (latest constraint)
 - [x] Record that the deployed phone cannot reach the user's PC behind its firewall; USB model tests are development-only.
@@ -74,6 +78,24 @@ Windows deferred. No model bundled or on-phone inference engine. Text import doe
 - [x] Fresh exact-payload preview and explicit consent before every remote writing request; cancel/stale-context refusal before transmission and stale-result refusal after waiting.
 - [x] Primary phone-friendly connection/model setup; PC-server controls remain optional advanced settings.
 - [x] Recommend strong research/writing models only when returned by the actual eligible account catalog.
-- [x] Test privacy/transport/service boundaries, rebuild/sign/install, and verify the phone without PC model routing. Successful live plan inference remains externally blocked as recorded above.
+- [x] Test privacy/transport/service boundaries, rebuild/sign/install, and verify the phone without PC model routing; actual direct-account writing and query-only research now succeed.
 - [x] Update user guide, architecture, privacy and release records for this deployment.
 - [x] Prepare the local GitHub checkout and signed release assets for manual user commits/uploads; no automatic staging, commit, push or publication.
+
+## 0.1.2 release and remaining-test audit
+- [x] Set app/package/test metadata to 0.1.2 and Android version code 2.
+- [x] Derive visible/native/network version information and release artifact names from validated metadata.
+- [x] Verify same-key 0.1.0→0.1.2 installation preserves projects, protected/working drafts, profiles, notes and the connected session; check native, welcome and About versions.
+- [x] Create `D:\Draft2Done\current release` for the newest prepared GitHub upload files.
+- [x] Apply repository-local LF source / CRLF Windows command / binary-preservation rules without changing global Git settings or staging files.
+- [x] Correct and regress cited-source bibliography retention after disabling future AI use.
+- [x] Correct and regress imported-document application of saved count/export/mode defaults.
+- [x] Cover assignment/rubric file import, max validation, Polished Voice prompts, saved-voice editing/reopen, rejection, restore and deletion confirmations in the full host runner.
+- [x] Complete 17 actual Android file-picker TXT/DOCX/PDF save/import and print cancel/reopen checks using fictional QA files, with exact workspace/backup/account restoration and cleanup.
+- [x] Correct and regress duplicate print handoff, blocked/error-page PDF rendering, title-based default filenames and intact PDF glyph-run imports; retain a real fictional Samsung PDF fixture.
+- [x] Make a fresh controlled ChatGPT attempt: actual Helper/Complete/regeneration/query-only research succeed and preserve the protected original; cleanup restores prior selection/preferences.
+- [x] Verify production token refresh, remote sign-out revocation, rejected old refresh token and normal user-authenticated reconnection.
+- [x] Require selected web search, reject unconfirmed/failed/progress-only search evidence before saving, and validate citation spans. Query-only research remains separate.
+- [ ] Successful live ChatGPT web tool/citation output: controlled requests returned no confirmed evidence and the final structural diagnostic ended in a service error. Keep those failed assertions visible; no further automatic inference retries.
+- [x] Run final checks against the rebuilt 0.1.2 APK, verify the installed APK hash and update the verification record, current release folder and local checkout.
+- [ ] User-managed publication of v0.1.2, then a production GitHub-delivered upgrade check. No automated publication is authorized.

@@ -1,6 +1,6 @@
 # Android APK
 
-The Android application packages the local web app in a native Java host. It needs Android 8.0 (API 26) or newer and an up-to-date Android System WebView. The package ID is `io.draft2done.app`; version 0.1.0 targets API 36.
+The Android application packages the local web app in a native Java host. It needs Android 8.0 (API 26) or newer and an up-to-date Android System WebView. The package ID is `io.draft2done.app`; version 0.1.2 targets API 36.
 
 ## Build on Windows
 
@@ -14,7 +14,9 @@ powershell -ExecutionPolicy Bypass -File scripts\build-android.ps1 -SkipWebBuild
 
 The first Android build calls `scripts/setup-android.ps1`, which downloads official, version-pinned Google SDK archives and verifies their published SHA-1 digests before extraction. No Android Studio, Gradle, emulator, global SDK installation, or system settings change is required. The archives are Android platform 36 revision 2, build-tools 36.0.0 and platform-tools 37.0.3. SDK license terms are included in the downloaded packages. A later rebuild can use the cached tools offline.
 
-Output: `dist/Draft2Done-0.1.0.apk`, its SHA-256/build metadata, and an `apksigner` verification report. Resource packaging uses AAPT2, Java compiles to Java 8 bytecode, D8 makes the DEX payload, and the APK is ZIP-aligned before signing with APK signature schemes v2 and v3. The script then verifies alignment and the signature.
+Output: `dist/Draft2Done-0.1.2.apk`, its SHA-256/build metadata, and an `apksigner` verification report. Resource packaging uses AAPT2, Java compiles to Java 8 bytecode, D8 makes the DEX payload, and the APK is ZIP-aligned before signing with APK signature schemes v2 and v3. The script then verifies alignment and the signature.
+
+Release identity comes from the Android manifest and matching package metadata. The current version is 0.1.2/code 2. The build checks the bundled web version and the signed APK's actual package/version; filenames and update URLs are derived automatically. Run `scripts\prepare-repo.ps1` after the final build to refresh the user-requested `D:\Draft2Done\current release` upload folder and the local GitHub checkout. No commit or publication is performed.
 
 ## Keep the signing identity
 
@@ -30,7 +32,7 @@ With USB debugging enabled and the phone authorized for this computer:
 
 ```powershell
 .\tools\android-sdk\platform-tools\adb.exe devices
-.\tools\android-sdk\platform-tools\adb.exe install -r .\dist\Draft2Done-0.1.0.apk
+.\tools\android-sdk\platform-tools\adb.exe install -r .\dist\Draft2Done-0.1.2.apk
 ```
 
 This workstation's authorized Samsung is currently managed by the existing ADB server on port 5038. Use `adb -P 5038 -s R5GL75PGMFP ...`, or `scripts\test-samsung.ps1 -AdbServerPort 5038 -Serial R5GL75PGMFP`. The helpers select that Samsung explicitly and leave the other device and ADB servers unchanged.

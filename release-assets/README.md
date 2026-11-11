@@ -5,8 +5,8 @@ was performed by the preparation script. Private signing materials were excluded
 
 Committing source or these JSON files alone does not activate Android updates.
 To publish this prepared release, manually create a stable GitHub Release in
-youriptvus/Draft2Done with the tag specified in latest.json (currently v0.1.0),
-and upload both Draft2Done-0.1.0.apk and latest.json as release assets. The build
+youriptvus/Draft2Done with the tag v0.1.2 (Android versionCode 2),
+and upload both Draft2Done-0.1.2.apk and latest.json as release assets. The build
 metadata and signature report are optional supporting assets. Verify that the
 release's APK hash matches latest.json. APK binaries are intentionally gitignored;
 upload the existing local file using GitHub's Release interface.

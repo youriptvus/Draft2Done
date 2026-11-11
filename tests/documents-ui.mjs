@@ -177,6 +177,14 @@ try {
     /public libraries/,
   );
   checks.push("Text PDF import");
+  await importDocument("Samsung export.pdf", await readFile(resolve("tests/fixtures/android-text-export.pdf")));
+  const androidPdfText=(await page.locator("#draft-editor").inputValue()).replace(/\s+/g," ");
+  assert.match(androidPdfText,/Draft2Done fictional document workflow sentinel/);
+  assert.match(androidPdfText,/Fictional Unicode fixture: café and α/);
+  assert.match(androidPdfText,/fit into everyday city planning/);
+  assert.doesNotMatch(androidPdfText,/fi ctional|work fl ow|fi xture/);
+  checks.push("Actual Samsung PDF export reimports ligatures, word boundaries and Unicode correctly");
+  await importDocument("My paper.pdf", pdf);
   await page
     .getByRole("button", { name: "Paper actions", exact: true })
     .click();
@@ -291,6 +299,34 @@ try {
   assert.match(formattedReadback.value, /<em>careful<\/em>/);
   assert.equal((formattedReadback.value.match(/References/g) || []).length, 1);
   checks.push("Bibliography deduplication, live preview toggle and formatted DOCX independent read-back");
+  await page.evaluate(() => Object.assign(window.Draft2Done.getState().settings, {
+    defaultVoice: "polished", citationStyle: "MLA", defaultMode: "helper",
+    excludeReferences: false, excludeTitle: false,
+    exportFontFamily: "Georgia", exportFontSize: 11, exportLineSpacing: 1,
+  }));
+  for (const [name, bytes] of [["Defaults.txt", Buffer.from(text)], ["Defaults.md", Buffer.from(text)], ["Defaults.docx", docx], ["Defaults.pdf", pdf]]) {
+    await importDocument(name, bytes);
+    const imported = await page.evaluate(() => {
+      const s = window.Draft2Done.getState();
+      return s.projects.find(p => p.id === s.activeId);
+    });
+    assert.equal(imported.voice, "polished", name);
+    assert.equal(imported.citationStyle, "MLA", name);
+    assert.deepEqual(imported.countingRules, { excludeReferences: false, excludeTitle: false }, name);
+    assert.deepEqual(imported.exportFormatting, { fontFamily: "Georgia", fontSize: 11, lineSpacing: 1 }, name);
+    assert.equal(await page.getByRole("tab", { name: "Helper", exact: true }).getAttribute("aria-selected"), "true", name);
+  }
+  checks.push("TXT/MD/DOCX/PDF imports apply current writing, count, appearance and opening-mode defaults");
+  await importDocument("Own settings.d2d", Buffer.from(JSON.stringify({ format: "draft2done", version: 1, project: formatted })));
+  const restoredSettings = await page.evaluate(() => {
+    const s = window.Draft2Done.getState();
+    return s.projects.find(p => p.id === s.activeId);
+  });
+  assert.equal(restoredSettings.voice, formatted.voice);
+  assert.equal(restoredSettings.citationStyle, formatted.citationStyle);
+  assert.deepEqual(restoredSettings.countingRules, formatted.countingRules);
+  assert.deepEqual(restoredSettings.exportFormatting, formatted.exportFormatting);
+  checks.push("Project backup import preserves its own writing/count/export settings despite different global defaults");
   assert.deepEqual(errors, []);
   await mkdir("test-results", { recursive: true });
   await writeFile(

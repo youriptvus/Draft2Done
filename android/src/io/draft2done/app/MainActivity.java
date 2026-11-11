@@ -8,7 +8,12 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintDocumentInfo;
+import android.print.PageRange;
 import android.print.PrintManager;
+import android.os.CancellationSignal;
+import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
 import android.util.Base64;
 import android.view.View;
@@ -16,6 +21,7 @@ import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
+import android.webkit.WebResourceError;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -49,6 +55,7 @@ public final class MainActivity extends Activity {
     private ChatGPTConnection chatgpt;
     private AppUpdates updates;
     private WebView webView, printView;
+    private PrintDocumentAdapter printAdapter;
     private FrameLayout hostView;
     private volatile boolean destroyed;
     private byte[] pendingExport;
@@ -165,7 +172,7 @@ public final class MainActivity extends Activity {
             catch (Exception exception) { return "error: " + exception.getMessage(); }
         }
         @JavascriptInterface public String appInfo() {
-            return "{\"name\":\"Draft2Done\",\"version\":\"0.1.0\",\"platform\":\"android\",\"packageId\":\"io.draft2done.app\",\"maxImportBytes\":10485760,\"maxStateBytes\":4194304}";
+            return "{\"name\":\"Draft2Done\",\"version\":"+JSONObject.quote(AppVersion.name(MainActivity.this))+",\"platform\":\"android\",\"packageId\":"+JSONObject.quote(getPackageName())+",\"maxImportBytes\":"+FILE_LIMIT+",\"maxStateBytes\":"+STATE_LIMIT+"}";
         }
         @JavascriptInterface public void setAppearance(String theme){
             final boolean dark="dark".equals(theme);
@@ -241,21 +248,60 @@ public final class MainActivity extends Activity {
         @JavascriptInterface public void printDocument(String html) {
             if (html == null || html.length() > STATE_LIMIT) { notice("Document is too large to print."); return; }
             runOnUiThread(() -> {
-                if (printView != null) printView.destroy();
+                if (printView != null) { notice("Finish or cancel the current PDF print job before starting another."); return; }
                 printView = new WebView(MainActivity.this);
                 printView.getSettings().setJavaScriptEnabled(false);
                 printView.getSettings().setAllowFileAccess(false);
                 printView.getSettings().setAllowContentAccess(false);
+                final String printUrl=ORIGIN+"/print/"+java.util.UUID.randomUUID()+".html";
+                final byte[] document=html.getBytes(StandardCharsets.UTF_8);
                 printView.setWebViewClient(new WebViewClient() {
-                    @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) { return rejected(); }
+                    private boolean handedOff;
+                    @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                        if(request.isForMainFrame()&&"GET".equals(request.getMethod())&&printUrl.equals(request.getUrl().toString())){
+                            WebResourceResponse response=new WebResourceResponse("text/html","UTF-8",new ByteArrayInputStream(document));
+                            response.setResponseHeaders(Collections.singletonMap("Cache-Control","no-store"));
+                            return response;
+                        }
+                        return rejected();
+                    }
+                    @Override public void onReceivedError(WebView view,WebResourceRequest request,WebResourceError error){
+                        if(request.isForMainFrame()&&view==printView&&printAdapter==null){releasePrintView(view);notice("Could not prepare this document for PDF export. Try again.");}
+                    }
                     @Override public void onPageFinished(WebView view, String url) {
+                        // WebView can report page completion again after print rendering.
+                        // A single offscreen WebView must own exactly one print job.
+                        if (handedOff || view != printView || !printUrl.equals(url)) return;
+                        handedOff = true;
+                        if (destroyed) { releasePrintView(view); return; }
                         PrintManager manager = (PrintManager) getSystemService(PRINT_SERVICE);
-                        if (manager != null) manager.print("Draft2Done paper", view.createPrintDocumentAdapter("Draft2Done paper"), new PrintAttributes.Builder().build());
+                        if (manager == null) { releasePrintView(view); notice("Android printing is unavailable."); return; }
+                        String title=view.getTitle();
+                        if(title==null)title="";
+                        title=title.replaceAll("[\\\\/\\p{Cntrl}]", "_").trim();
+                        if(title.isEmpty())title="Draft2Done paper";
+                        final String printName=title.substring(0,Math.min(title.length(),120));
+                        final PrintDocumentAdapter delegate=view.createPrintDocumentAdapter(printName);
+                        PrintDocumentAdapter adapter=new PrintDocumentAdapter(){
+                            private boolean finished;
+                            @Override public void onStart(){delegate.onStart();}
+                            @Override public void onLayout(PrintAttributes oldAttributes,PrintAttributes newAttributes,CancellationSignal cancellation,LayoutResultCallback callback,Bundle extras){delegate.onLayout(oldAttributes,newAttributes,cancellation,callback,extras);}
+                            @Override public void onWrite(PageRange[] pages,ParcelFileDescriptor destination,CancellationSignal cancellation,WriteResultCallback callback){delegate.onWrite(pages,destination,cancellation,callback);}
+                            @Override public void onFinish(){if(finished)return;finished=true;try{delegate.onFinish();}finally{runOnUiThread(()->releasePrintView(view));}}
+                        };
+                        printAdapter=adapter;
+                        try{manager.print(printName,adapter,new PrintAttributes.Builder().build());}
+                        catch(Exception error){adapter.onFinish();notice("Could not start Android printing. Try again.");}
                     }
                 });
-                printView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
+                printView.loadUrl(printUrl);
             });
         }
+    }
+
+    private void releasePrintView(WebView view){
+        if(view!=printView)return;
+        printAdapter=null;printView=null;view.setWebViewClient(null);view.destroy();
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -327,7 +373,7 @@ public final class MainActivity extends Activity {
                 connection.setInstanceFollowRedirects(false);
                 connection.setRequestMethod(verb);
                 connection.setRequestProperty("Accept", "application/json");
-                connection.setRequestProperty("User-Agent", "Draft2Done/0.1.0 (Android)");
+                connection.setRequestProperty("User-Agent", AppVersion.userAgent(MainActivity.this)+" (Android)");
                 Iterator<String> names = headers.keys();
                 while (names.hasNext()) {
                     String name = names.next(), value = headers.getString(name);
@@ -398,7 +444,8 @@ public final class MainActivity extends Activity {
         if(updates!=null)updates.destroy();
         for (NetworkTask request : requests.values()) { request.cancelled=true; if (request.connection != null) request.connection.disconnect(); }
         workers.shutdownNow();
-        if (printView != null) printView.destroy();
+        // Android owns an active print adapter until onFinish; keep its WebView alive.
+        if (printView != null && printAdapter == null) releasePrintView(printView);
         if (webView != null) { webView.removeJavascriptInterface("DraftNative"); webView.destroy(); }
         super.onDestroy();
     }

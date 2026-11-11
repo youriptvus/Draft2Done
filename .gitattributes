@@ -1,0 +1,24 @@
+# Keep source text consistent on Windows, macOS and Linux.
+* text=auto eol=lf
+
+# Native Windows command scripts use CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Preserve binary files byte-for-byte.
+*.apk binary
+*.idsig binary
+*.p12 binary
+*.jks binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.zip binary
+*.jar binary
+*.woff binary
+*.woff2 binary

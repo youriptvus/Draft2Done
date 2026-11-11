@@ -1,6 +1,8 @@
 param([switch]$SkipWebBuild)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'release-info.ps1')
+$releaseInfo = Get-Draft2DoneReleaseInfo $projectRoot
 $sdkRoot = Join-Path $projectRoot 'tools\android-sdk'
 $buildTools = Join-Path $sdkRoot 'build-tools\36.0.0'
 $androidJar = Join-Path $sdkRoot 'platforms\android-36\android.jar'
@@ -44,13 +46,13 @@ Copy-Item -LiteralPath $webRoot -Destination (Join-Path $assetsRoot 'web') -Recu
 $compiled = Join-Path $buildRoot 'resources.zip'
 $unsigned = Join-Path $buildRoot 'unsigned.apk'
 $aligned = Join-Path $buildRoot 'aligned.apk'
-$apk = Join-Path $releaseRoot 'Draft2Done-0.1.0.apk'
+$apk = Join-Path $releaseRoot $releaseInfo.ApkFileName
 Invoke-Checked (Join-Path $buildTools 'aapt2.exe') @('compile','--dir',(Join-Path $projectRoot 'android\res'),'-o',$compiled)
-Invoke-Checked (Join-Path $buildTools 'aapt2.exe') @('link','-o',$unsigned,'-I',$androidJar,'--manifest',(Join-Path $projectRoot 'android\AndroidManifest.xml'),'--java',$generatedRoot,'--min-sdk-version','26','--target-sdk-version','36','-A',$assetsRoot,$compiled)
+Invoke-Checked (Join-Path $buildTools 'aapt2.exe') @('link','-o',$unsigned,'-I',$androidJar,'--manifest',$releaseInfo.ManifestPath,'--java',$generatedRoot,'--min-sdk-version',[string]$releaseInfo.MinSdkVersion,'--target-sdk-version',[string]$releaseInfo.TargetSdkVersion,'-A',$assetsRoot,$compiled)
 $sources = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'android\src'),$generatedRoot -Recurse -Filter '*.java' | Select-Object -ExpandProperty FullName)
 Invoke-Checked $javacExe (@('--release','8','-encoding','UTF-8','-classpath',$androidJar,'-d',$classesRoot) + $sources)
 $classFiles = @(Get-ChildItem -LiteralPath $classesRoot -Recurse -Filter '*.class' | Select-Object -ExpandProperty FullName)
-Invoke-Checked $javaExe (@('-cp',(Join-Path $buildTools 'lib\d8.jar'),'com.android.tools.r8.D8','--release','--min-api','26','--lib',$androidJar,'--output',$dexRoot) + $classFiles)
+Invoke-Checked $javaExe (@('-cp',(Join-Path $buildTools 'lib\d8.jar'),'com.android.tools.r8.D8','--release','--min-api',[string]$releaseInfo.MinSdkVersion,'--lib',$androidJar,'--output',$dexRoot) + $classFiles)
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
 $zip = [IO.Compression.ZipFile]::Open($unsigned,[IO.Compression.ZipArchiveMode]::Update)
@@ -102,12 +104,16 @@ try {
 }
 $verification = & $javaExe '-jar' (Join-Path $buildTools 'lib\apksigner.jar') 'verify' '--verbose' '--print-certs' $apk
 if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed.' }
-$verification | Set-Content -LiteralPath (Join-Path $releaseRoot 'Draft2Done-0.1.0-signature.txt') -Encoding UTF8
+Write-Draft2DoneReleaseText (Join-Path $releaseRoot $releaseInfo.SignatureFileName) ($verification -join "`n")
 $verification | Write-Host
 Invoke-Checked (Join-Path $buildTools 'zipalign.exe') @('-c','-P','16','4',$apk)
-@{ file=(Split-Path -Leaf $apk); sha256=(Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant(); bytes=(Get-Item -LiteralPath $apk).Length; package='io.draft2done.app'; version='0.1.0'; minAndroid='8.0'; targetSdk=36 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $releaseRoot 'Draft2Done-0.1.0-build.json') -Encoding UTF8
+$badging = & (Join-Path $buildTools 'aapt.exe') dump badging $apk
+if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the signed APK package identity.' }
+$expectedIdentity = "package: name='$($releaseInfo.PackageName)' versionCode='$($releaseInfo.VersionCode)' versionName='$($releaseInfo.VersionName)'"
+if (!@($badging | Where-Object { $_.StartsWith($expectedIdentity + ' ') }).Count) { throw 'Signed APK package/version does not match current release metadata.' }
+$apkHash = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
+$buildJson = @{ file=$releaseInfo.ApkFileName; sha256=$apkHash; bytes=(Get-Item -LiteralPath $apk).Length; package=$releaseInfo.PackageName; version=$releaseInfo.VersionName; versionCode=$releaseInfo.VersionCode; minAndroid='8.0'; minSdk=$releaseInfo.MinSdkVersion; targetSdk=$releaseInfo.TargetSdkVersion } | ConvertTo-Json
+Write-Draft2DoneReleaseText (Join-Path $releaseRoot $releaseInfo.BuildFileName) $buildJson
 Write-Host "Signed APK: $apk"
-$manifest = [xml](Get-Content -LiteralPath (Join-Path $projectRoot 'android\AndroidManifest.xml') -Raw)
-$versionCode = [int]$manifest.manifest.GetAttribute('versionCode','http://schemas.android.com/apk/res/android')
-$versionName = $manifest.manifest.GetAttribute('versionName','http://schemas.android.com/apk/res/android')
-@{ version=$versionName; versionCode=$versionCode; apkUrl="https://github.com/youriptvus/Draft2Done/releases/download/v$versionName/$(Split-Path -Leaf $apk)"; sha256=(Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant(); package='io.draft2done.app' } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $releaseRoot 'latest.json') -Encoding UTF8
+$updateJson = @{ version=$releaseInfo.VersionName; versionCode=$releaseInfo.VersionCode; apkUrl=$releaseInfo.ApkUrl; sha256=$apkHash; package=$releaseInfo.PackageName } | ConvertTo-Json
+Write-Draft2DoneReleaseText (Join-Path $releaseRoot 'latest.json') $updateJson

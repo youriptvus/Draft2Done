@@ -73,6 +73,7 @@ const icon = (name, size = 20) =>
 const button = (action, label, cls = "secondary", extra = "") =>
   `<button class="${cls}" data-action="${action}" ${extra}>${label}</button>`;
 const uid = () => crypto.randomUUID();
+const APP_VERSION = __DRAFT2DONE_VERSION__;
 const defaults = {
   autoUpdates: true,
   theme: "dark",
@@ -218,7 +219,7 @@ function paperCards() {
 }
 function renderHome() {
   shell(
-    `<section class="welcome"><div class="eyebrow">A LITTLE PROGRESS GOES A LONG WAY</div><h1>Your ideas.<br>Your voice.<br><em>Let’s finish this.</em></h1><p>A calmer space to pick up your paper<br>and take it all the way.</p><div class="welcome-art" aria-hidden="true"><div class="art-page"><span></span><span></span><span></span><span></span><b>${icon("check", 22)}</b></div><i class="orbit one"></i><i class="orbit two"></i></div></section><div class="start-actions">${button("import", icon("upload") + " Import your draft", "primary large")}${button("new", icon("plus") + " New workspace", "secondary large")}</div><div class="reassurance">${icon("shield", 16)} Your writing stays yours. Original drafts are protected.</div><section class="section"><div class="section-heading"><h2>${state.projects.length ? "Pick up where you left off" : "Start with something you’ve written"}</h2>${state.projects.length ? button("page", "View all", "text-button", 'data-id="projects"') : ""}</div>${state.projects.length ? paperCards() : `<div class="intro-card"><span class="tinted-icon">${icon("spark")}</span><div><strong>A research partner, at your pace.</strong><p>Bring a draft. Explore ideas, find sources, and review every proposed addition.</p>${button("sample", "Try a fictional sample " + icon("arrow", 15), "text-button")}</div></div>`}</section><div class="version-footer">DRAFT2DONE · 0.1.0</div>`,
+    `<section class="welcome"><div class="eyebrow">A LITTLE PROGRESS GOES A LONG WAY</div><h1>Your ideas.<br>Your voice.<br><em>Let’s finish this.</em></h1><p>A calmer space to pick up your paper<br>and take it all the way.</p><div class="welcome-art" aria-hidden="true"><div class="art-page"><span></span><span></span><span></span><span></span><b>${icon("check", 22)}</b></div><i class="orbit one"></i><i class="orbit two"></i></div></section><div class="start-actions">${button("import", icon("upload") + " Import your draft", "primary large")}${button("new", icon("plus") + " New workspace", "secondary large")}</div><div class="reassurance">${icon("shield", 16)} Your writing stays yours. Original drafts are protected.</div><section class="section"><div class="section-heading"><h2>${state.projects.length ? "Pick up where you left off" : "Start with something you’ve written"}</h2>${state.projects.length ? button("page", "View all", "text-button", 'data-id="projects"') : ""}</div>${state.projects.length ? paperCards() : `<div class="intro-card"><span class="tinted-icon">${icon("spark")}</span><div><strong>A research partner, at your pace.</strong><p>Bring a draft. Explore ideas, find sources, and review every proposed addition.</p>${button("sample", "Try a fictional sample " + icon("arrow", 15), "text-button")}</div></div>`}</section><div class="version-footer">DRAFT2DONE · ${APP_VERSION}</div>`,
   );
 }
 function renderWrite() {
@@ -906,22 +907,25 @@ onImported(async (payload) => {
       state.activeId = p.id;
     } else {
       const title = doc.name.replace(/\.[^.]+$/, "");
-      const p = createProject(title, doc.text);
-      p.voice = state.settings.defaultVoice;
-      p.citationStyle = state.settings.citationStyle;
+      const p = projectFromDraft(title, doc.text);
       updateProject(p);
       state.activeId = p.id;
       if (doc.warning) toast(doc.warning);
     }
     persist();
     page = "write";
-    tab = "draft";
+    tab = defaultWritingTab();
     render();
   } catch (e) {
     toast(`Import failed: ${e.message}`);
   }
 });
-function newPaper(text = "", title = "Untitled paper") {
+function defaultWritingTab() {
+  return ["draft", "helper", "complete"].includes(state.settings.defaultMode)
+    ? state.settings.defaultMode
+    : "draft";
+}
+function projectFromDraft(title, text) {
   const p = createProject(title, text);
   p.countingRules = {
     excludeReferences: state.settings.excludeReferences !== false,
@@ -934,12 +938,14 @@ function newPaper(text = "", title = "Untitled paper") {
   };
   p.voice = state.settings.defaultVoice;
   p.citationStyle = state.settings.citationStyle;
+  return p;
+}
+function newPaper(text = "", title = "Untitled paper") {
+  const p = projectFromDraft(title, text);
   state.projects.push(p);
   state.activeId = p.id;
   page = "write";
-  tab = ["draft", "helper", "complete"].includes(state.settings.defaultMode)
-    ? state.settings.defaultMode
-    : "draft";
+  tab = defaultWritingTab();
   persist();
   render();
 }
@@ -1697,7 +1703,7 @@ async function handleAction(action, target) {
       break;
     case "about":
       modal(
-        "Draft2Done 0.1.0",
+        `Draft2Done ${APP_VERSION}`,
         `<p><strong>Your Draft. Your Voice. Done.</strong></p><p>Android release. Private on-device projects, direct ChatGPT writing with approval before each request, and optional scholarly source search. Computer/server AI is an advanced option. No AI model is bundled.</p><p>${native ? "Native Android storage and document picker are active." : "Browser preview: data is stored in this browser only."}</p><p>Windows desktop development is deferred.</p>`,
       );
       break;

@@ -34,6 +34,8 @@ $ErrorActionPreference = 'Stop'
 if (($LiveAI -or $InstallApks) -and !$Device) { throw '-LiveAI and -InstallApks require -Device.' }
 if ($SkipHost -and !$Device) { throw '-SkipHost requires -Device; the default run always checks the host.' }
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'release-info.ps1')
+$releaseInfo = Get-Draft2DoneReleaseInfo $projectRoot
 $reportRoot = Join-Path $projectRoot 'test-results'
 New-Item -ItemType Directory -Force -Path $reportRoot | Out-Null
 $steps = New-Object 'System.Collections.Generic.List[object]'
@@ -91,6 +93,7 @@ try {
         Invoke-TestStep 'Browser writing workflow and lifecycle' { Invoke-NativeChecked 'npm.cmd' @('run','test:ui') }
         Invoke-TestStep 'Document roundtrips and optional add-on UI' { Invoke-NativeChecked 'npm.cmd' @('run','test:documents') }
         Invoke-TestStep 'Proposal, profile, revision and research review workflows' { Invoke-NativeChecked 'npm.cmd' @('run','test:review') }
+        Invoke-TestStep 'Assignment, saved voice and project management workflows' { Invoke-NativeChecked 'npm.cmd' @('run','test:management') }
     }
 
     if ($Device) {
@@ -101,7 +104,7 @@ try {
             $manufacturer = (& $adb @adbArguments shell getprop ro.product.manufacturer | Out-String).Trim()
             if ($LASTEXITCODE -ne 0 -or $manufacturer -ne 'samsung') { throw 'The explicit serial must identify the authorized Samsung.' }
             if ($InstallApks) {
-                $release = Join-Path $projectRoot 'dist\Draft2Done-0.1.0.apk'
+                $release = Join-Path (Join-Path $projectRoot 'dist') $releaseInfo.ApkFileName
                 $harness = Join-Path $projectRoot 'build\device-tests\Draft2Done-device-tests.apk'
                 if (!(Test-Path -LiteralPath $release) -or !(Test-Path -LiteralPath $harness)) { throw 'Build the signed release and test APKs first with scripts/build-android.ps1 and scripts/build-device-tests.ps1.' }
                 Invoke-NativeChecked $adb ($adbArguments + @('install','-r',$release))
@@ -158,7 +161,8 @@ try {
     $reportPath = Join-Path $reportRoot $reportName
     [pscustomobject]@{
         startedUtc=$started.ToString('o');finishedUtc=[DateTime]::UtcNow.ToString('o');passed=$passed
-        device=[bool]$Device;liveAI=[bool]$LiveAI;hostSkipped=[bool]$SkipHost;steps=@($steps.ToArray())
+        device=[bool]$Device;liveAI=[bool]$LiveAI;hostSkipped=[bool]$SkipHost
+        version=$releaseInfo.VersionName;versionCode=$releaseInfo.VersionCode;package=$releaseInfo.PackageName;steps=@($steps.ToArray())
     } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $reportPath -Encoding UTF8
     Write-Host "Regression report: $reportPath"
 }

@@ -1,6 +1,6 @@
 {
   "name": "draft2done",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Local-first academic writing studio for Android",
@@ -10,7 +10,8 @@
     "test": "node --test tests/*.test.mjs",
     "test:ui": "node tests/ui-smoke.mjs",
     "test:documents": "node tests/documents-ui.mjs",
-    "test:review": "node tests/review-ui.mjs"
+    "test:review": "node tests/review-ui.mjs",
+    "test:management": "node tests/management-ui.mjs"
   },
   "dependencies": {
     "buffer": "^6.0.3",

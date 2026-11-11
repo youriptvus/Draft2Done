@@ -117,7 +117,7 @@ public final class UpdateValidationInstrumentation extends Instrumentation {
         String hashValue = hex(hash);
         JSONObject metadata = new JSONObject().put("version", installed.versionName).put("versionCode", code)
                 .put("package", context.getPackageName()).put("sha256", hashValue)
-                .put("apkUrl", "https://github.com/youriptvus/Draft2Done/releases/download/v0.1.0/Draft2Done-0.1.0.apk");
+                .put("apkUrl", "https://github.com/youriptvus/Draft2Done/releases/download/v"+installed.versionName+"/Draft2Done-"+installed.versionName+".apk");
         call("manifest", new Class<?>[]{JSONObject.class}, metadata); passed("Device Android JSON implementation accepts release metadata");
         rejects(() -> call("manifest", new Class<?>[]{JSONObject.class}, new JSONObject(metadata.toString()).put("versionCode", code + 0.5)), "Fractional manifest version blocked on Android");
         rejects(() -> call("downloadUri", new Class<?>[]{String.class}, "https://github.com.evil.example/update.apk"), "Untrusted redirect host blocked on Android");

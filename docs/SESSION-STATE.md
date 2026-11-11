@@ -1,58 +1,49 @@
 # Current development and delivery state
 
-Updated 2026-11-10 (America/New_York). The user-requested pause was saved at checkpoint `0d27d35`, then development resumed. The standalone Android changes are implemented, built, signed, installed and tested. The user handles Git commits and uploads manually.
+Updated 2026-11-10 (America/New_York). Android 0.1.2/code 2 is signed, installed, verified locally and prepared for manual release. The user handles Git commits and GitHub publication manually.
 
 ## Standing requirements
 
 - Signed Android APK first; Windows remains deferred.
-- Automate tests, edits, builds and device checks. Involve the user only for direct authentication.
-- The deployed phone cannot connect to the user's PC behind its firewall. Primary AI uses direct phone-to-OpenAI HTTPS; no PC model, USB reverse, port forwarding or VPN is required.
-- Keep the elegant dark welcome screen, raised paper illustration, protected originals and reviewable AI additions.
-- Recommend suitable strong models using the actual eligible account catalog. No model downloads or standard paid API-key fallback.
+- Automate edits, builds and tests; involve the user only for authentication.
+- The deployed phone cannot reach the user's firewalled PC. Primary AI uses direct phone-to-OpenAI HTTPS. No PC model, USB reverse, forwarding or VPN is required.
+- Preserve the elegant dark welcome screen, raised paper illustration, protected originals and reviewable additions.
+- Recommend models only from the actual eligible account catalog. No bundled language model, model downloads or paid API-key fallback.
+- Every writing request requires a fresh exact-payload preview and approval; changed context invalidates consent and stale replies.
 - Automatic update checks default on, targeting `youriptvus/Draft2Done`.
-- Prepare changes locally in `D:\Draft2Done\repo\Draft2Done`; no automatic staging, commits, push or publication. The user will commit/upload manually.
+- Prepare source in `D:\Draft2Done\repo\Draft2Done` and newest release files in `D:\Draft2Done\current release`. No automatic staging, commit, push or publication. Leave the separate older `draft2done/` checkout untouched.
+- Repository source uses LF, Windows `.bat`/`.cmd` scripts use CRLF, and binaries remain unchanged. Apply `.gitattributes`; do not change global Git settings.
 
-## Final installed release
+## Release identity
 
-`dist/Draft2Done-0.1.0.apk`, 836284 bytes, SHA-256 `7574934df73594784417fb73c6bdce9ca3fb4fafb61204f5a70484389bc05580`.
+Package `io.draft2done.app`, version 0.1.2/code 2, min API 26/target API 36. The non-debuggable APK disables Android cloud backup. Persistent certificate SHA-256: `6c9baa34437afbd7a3607e5e0d5bff5cb76cc75f75b220dee9f883394b27f7fd`. APK SHA-256 and final test results are maintained in VERIFICATION.md and generated release metadata.
 
-Package `io.draft2done.app`, version 0.1.0/code 1, Android 8+ / target API 36. Non-debuggable, cloud backup disabled. Signature schemes v2/v3 verified with the persistent release certificate. Same-key installation preserved projects and the encrypted account session.
+Private signing material remains in ignored `signing/`; never print, commit or publish it. Future updates require that same key and a higher versionCode. Version names, artifact paths and visible versions now derive from validated package/Android metadata.
 
-Private signing material stays in ignored `signing/` in the build workspace. Never print, commit or publish it. Future updates require that same key and an increased versionCode.
+## Implemented changes and verification
 
-## Completed standalone AI changes
+- Direct native ChatGPT Helper, Complete, regeneration and research use the encrypted account session and actual eligible catalog; no credentials cross the web bridge.
+- Reviewed requests preserve the full draft within documented limits, use `store:false`, and require a terminal completed response. Quota failure saves no incomplete result or billing fallback.
+- Offline editing, saving, counts, descriptive DNA, deterministic observations, saved research and document conversion remain available.
+- 0.1.2 fixes already-used references disappearing from exports after future AI use is disabled, and imports ignoring saved writing/count/export defaults. Portable project backups retain their own preferences.
+- Host checks pass: 77 JavaScript tests; 38 OAuth/stream/citation, 7 lifecycle, 39 DNS/registration/quota, 53 assist/session, 12 research-request and 52 update checks; all browser writing/review/management suites and 14 document/add-on checks. Eleven isolated release-metadata checks also pass.
+- Seven initial same-key 0.1.0/code 1 to 0.1.2/code 2 checks verified all project/profile/note/active-paper fingerprints, connected account and installed/displayed versions. Later web fixes retain the storage format.
+- Seventeen real Samsung document-workflow checks pass on the final APK: TXT/DOCX/PDF saves and all three native-picker reimports, print cancellation/reopening, fictional-file cleanup and exact workspace/backup/account restoration. Real tests corrected duplicate print handoff, printing an error page, generic PDF filenames and spaces inside PDF glyph runs; the actual fictional PDF is a browser regression fixture. See VERIFICATION.md for the first pre-checkpoint crash caveat and private cleanup evidence.
+- The final signed APK passed the Samsung suite: 18 storage, 5 document-byte, 24 update/provider and 19 standalone workflow checks. Standalone assistance is simulated after real account/catalog validation. An independently pulled installed APK matches the final release hash exactly. The dark welcome screen is restored; Settings reports connected with no current connection error.
+- Nine real refresh checks passed. Actual Helper/Complete/regeneration/query-only research passed with exact consent and protected-original checks; fixture cleanup passed. The original combined run retains a failed web-search/citation assertion, which is not hidden as a fully passing suite.
+- Nine real sign-out/revocation checks passed, including one rejected revoked-refresh probe. The user completed ordinary browser authentication and reconnection passed. No revoked credentials were restored.
+- Selecting web search requires the tool and confirmed completed search evidence; unconfirmed research is refused before saving. Query-only/writing requests remain isolated. The focused web retest returned no explicit search/citation evidence; a subsequent single public-query diagnostic ended in terminal service error without completed output. No further inference retries are planned. Successful live web search/citations remain unverified, not a passing test.
 
-- Direct ChatGPT Helper, follow-up, Complete and section regeneration use the encrypted native account session.
-- Every actual writing request needs fresh exact-payload preview and explicit approval. Cancellation sends nothing. Changed draft/requirements/profile/source/account/model invalidates consent; changes during a pending reply discard that reply.
-- Reviewed system content becomes Responses instructions verbatim; user data becomes array input. Requests use store:false/stream:true, no tools or unsupported sampling/output parameters, and require terminal completion.
-- Full reviewed payloads are retained under 200,000 message characters and 1 MiB serialized limits. Local server context settings do not restrict the direct route; the provider checks its actual model capacity. No draft truncation.
-- Account model membership is checked natively with an account-specific short-lived encrypted catalog cache. Sign-out/switch invalidates it. Unusable refresh credentials clear only the matching old session.
-- Model guidance uses only returned eligible slugs. Astra is available on the tested account and was selected through the recommendation button. Catalog availability is not successful inference or proof of writing quality.
-- Offline editing, saving, counts, descriptive DNA, draft observations, saved research and document tools remain available. No on-phone language model is bundled. Advanced server support is optional for other environments with a reachable endpoint.
+## External services and delivery
 
-## Final verification
+Real browser consent, signed identity, encrypted restart persistence and eligible model loading passed. The observed catalog includes Astra, Sol, Terra and Luna variants; the test selected the recommendation before actual writing. Historical inference returned `subscription_sharing_usage_limit_exceeded`; current successful inference does not establish a reset time or whole-plan balance. Do not automatically retry a usage limit or claim catalog loading alone proves successful writing.
 
-- Host: 76 JavaScript tests; 18 OAuth, 7 request lifecycle, 39 DNS/registration/quota, 53 assist/session and 52 updater checks; all browser writing/review suites and 11 document/add-on checks passed.
-- Samsung SM-S166V / Android 16: 18 atomic recovery checks, 5 native file-byte checks, 24 update/provider checks and 19 standalone phone checks passed against the final signed APK.
-- Standalone testing uses the real connected session and actual eligible model catalog, then verified simulated assist replies. It covers exact consent/cancel/Helper/Complete/regen/accept/quota/no PC fallback and cleans up its own new fixture paper. No provider inference was sent by that suite.
-- The developer USB reverse mapping was removed before the final standalone run. No model server transport was used.
-- Earlier actual source retrieval and PC model quality tests are preserved in VERIFICATION.md. They do not establish a remote connection from the production phone.
-- Detailed results and screenshots remain in ignored `test-results/`; host/device reports have separate filenames.
+An earlier automatic approval review rejected opening ChatGPT Usage via ADB. That action was not bypassed, and no usage limits were changed.
 
-## Real account and external limits
+The user manually published v0.1.0. Its public API, manifest and independently downloaded APK were verified against the signed local build; five live Samsung update checks passed. A real GitHub-delivered 0.1.2 installation remains pending the user's manual publication under `v0.1.2`. Local ADB upgrade testing is distinct from public update delivery.
 
-Personal browser consent, signed identity, encrypted restart persistence and model catalog succeeded on the Samsung. The observed catalog was: `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6.1-terra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`.
+## Device and scope boundaries
 
-Actual plan requests returned `subscription_sharing_usage_limit_exceeded`. The account remains connected; no incomplete brief or paid fallback was saved. Further automatic inference attempts are stopped. Successful live plan writing/research, web search, refresh rotation and remote revocation remain unverified until usage permits intentional testing. Do not infer a reset time or the whole plan's balance. An account or app-specific limit can apply.
+Samsung SM-S166V / Android 16 uses explicit serial `R5GL75PGMFP` on already-running ADB servers 5038 and 5037. Final checks used 5037. Leave other devices/servers alone. Wireless fallback is authorized; mDNS currently discovers no pairing service. The user reapproved USB debugging; same-key installations used `-r` without uninstalling. No production PC model route is configured.
 
-Automatic approval review blocked opening ChatGPT Usage through ADB, citing policy; no alternate action bypassed it and no account limits were changed.
-
-The public GitHub latest-release endpoint returned 404; authenticated GitHub CLI previously reported account suspension. No publication occurred. The user's new instruction is to prepare local files only. `scripts/prepare-repo.ps1` copies source and verified release files into the existing checkout without touching its `.git` metadata or staging/committing/pushing. `release-assets/README.md` explains manual GitHub Release uploads. A source commit alone does not activate APK updates.
-
-## Workspace and remaining work
-
-- Build workspace: `D:\Draft2Done`. GitHub Desktop checkout: `D:\Draft2Done\repo\Draft2Done` (origin `https://github.com/youriptvus/Draft2Done.git`).
-- Leave the separate older user-created `draft2done/` checkout untouched. Neither nested checkout is added as a submodule to the build workspace.
-- Samsung uses the existing ADB server on port 5038 with explicit serial `R5GL75PGMFP`; leave other devices and ADB servers unchanged.
-- Remaining external checks: successful plan inference after account/app usage permits it, and a real higher-version GitHub update after the user publishes a release.
-- Windows, OCR, exact imported page layout, exhaustive citation types and Chicago footnotes remain deferred/limited as documented.
+Windows, OCR, exact imported page layout, exhaustive citation types and Chicago footnotes remain deferred/limited. Research uses saved-library caching and manual Verify; configurable cache/verification policies are not implemented. See REQUIREMENTS.md, TASKS.md and VERIFICATION.md for scope and evidence.

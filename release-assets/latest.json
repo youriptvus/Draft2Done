@@ -1,7 +1,7 @@
-﻿{
-    "apkUrl":  "https://github.com/youriptvus/Draft2Done/releases/download/v0.1.0/Draft2Done-0.1.0.apk",
-    "sha256":  "7574934df73594784417fb73c6bdce9ca3fb4fafb61204f5a70484389bc05580",
-    "versionCode":  1,
-    "version":  "0.1.0",
+{
+    "apkUrl":  "https://github.com/youriptvus/Draft2Done/releases/download/v0.1.2/Draft2Done-0.1.2.apk",
+    "sha256":  "4b364483f50a94d2a4bf639e771484cf4c267c058abc0cec61ba6d71a1dbcff5",
+    "versionCode":  2,
+    "version":  "0.1.2",
     "package":  "io.draft2done.app"
 }

@@ -1,0 +1,17 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=Draft2Done Release, OU=Draft2Done, O=Draft2Done
+Signer #1 certificate SHA-256 digest: 6c9baa34437afbd7a3607e5e0d5bff5cb76cc75f75b220dee9f883394b27f7fd
+Signer #1 certificate SHA-1 digest: cc5a47e092930fa18d77b9d77be077fe1d630f56
+Signer #1 certificate MD5 digest: 12140917a0a800b8855ce5c8a645f365
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 3072
+Signer #1 public key SHA-256 digest: f71d179314d2413529d892fcb319777f45677ed0aa424300905d7c0bafbe34cc
+Signer #1 public key SHA-1 digest: 868cc658700249a4c1bf9e85d477a7d60288667d
+Signer #1 public key MD5 digest: d9e677940d2b3375c999b50a0bca46eb
