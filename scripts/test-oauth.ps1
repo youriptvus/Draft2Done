@@ -11,6 +11,8 @@ $javac='C:\Program Files\Java\jdk-27.0.1\bin\javac.exe'
 $java='C:\Program Files\Java\jdk-27.0.1\bin\java.exe'
 $sources=@(
  'android\src\io\draft2done\app\OAuthProtocol.java',
+ 'android\src\io\draft2done\app\LoopbackCallbackServer.java',
+ 'android\src\io\draft2done\app\SignInKeepAliveService.java',
  'android\src\io\draft2done\app\RequestRegistry.java',
  'android\src\io\draft2done\app\DnsRetry.java',
  'android\src\io\draft2done\app\ChatGPTRegistration.java',
@@ -20,6 +22,7 @@ $sources=@(
  'android\src\io\draft2done\app\ChatGPTConnection.java',
  'android\src\io\draft2done\app\AppVersion.java',
  'tests\OAuthProtocolTest.java',
+ 'tests\LoopbackCallbackServerTest.java',
  'tests\RequestRegistryTest.java',
  'tests\ChatGPTConnectionSupportTest.java',
  'tests\AssistRequestTest.java',
@@ -29,6 +32,8 @@ $sources=@(
 if($LASTEXITCODE -ne 0){throw 'OAuth protocol test compilation failed.'}
 & $java -cp "$classes;$jar" io.draft2done.app.OAuthProtocolTest
 if($LASTEXITCODE -ne 0){throw 'OAuth protocol tests failed.'}
+& $java -cp "$classes;$jar" io.draft2done.app.LoopbackCallbackServerTest
+if($LASTEXITCODE -ne 0){throw 'Loopback callback TCP tests failed.'}
 & $java -cp "$classes;$jar" io.draft2done.app.RequestRegistryTest
 if($LASTEXITCODE -ne 0){throw 'Request lifecycle tests failed.'}
 & $java -cp "$classes;$jar" io.draft2done.app.ChatGPTConnectionSupportTest

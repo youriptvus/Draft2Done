@@ -99,6 +99,57 @@ export function loadState() {
   if (!raw || raw === "null") return null;
   return JSON.parse(raw);
 }
+const DRAFT_INPUT_KEY = "draft2done-paste-draft";
+function nativeDraftInput() {
+  return native &&
+    typeof window.DraftNative.loadDraftInput === "function" &&
+    typeof window.DraftNative.saveDraftInput === "function";
+}
+function checkedDraftInput(raw) {
+  if (!raw || raw === "null") return null;
+  let value;
+  try { value = JSON.parse(raw); }
+  catch { throw new Error("Saved draft input could not be read. Its stored copy has not been replaced."); }
+  if (value === null) return null;
+  if (!value || Array.isArray(value) || typeof value !== "object" || typeof value.text !== "string")
+    throw new Error(value?.error || "Saved draft input is invalid. Its stored copy has not been replaced.");
+  if (new TextEncoder().encode(value.text).length > 10 * 1024 * 1024)
+    throw new Error("Saved draft input exceeds the 10 MB limit. Its stored copy has not been replaced.");
+  return raw;
+}
+function mirrorDraftInput(raw) {
+  try {
+    if (raw) localStorage.setItem(DRAFT_INPUT_KEY, raw);
+    else localStorage.removeItem(DRAFT_INPUT_KEY);
+  } catch { /* Android's committed native record remains authoritative. */ }
+}
+export function loadDraftInput() {
+  if (!nativeDraftInput()) return localStorage.getItem(DRAFT_INPUT_KEY);
+  const raw = checkedDraftInput(window.DraftNative.loadDraftInput());
+  // A committed empty native record is a tombstone. Legacy browser data must
+  // never revive a paste that was already consumed or explicitly cleared.
+  if (typeof window.DraftNative.hasDraftInputHistory === "function" &&
+      !window.DraftNative.hasDraftInputHistory()) {
+    const legacy = checkedDraftInput(localStorage.getItem(DRAFT_INPUT_KEY));
+    saveDraftInput(legacy || "");
+    return legacy;
+  }
+  mirrorDraftInput(raw);
+  return raw;
+}
+export function saveDraftInput(raw) {
+  if (nativeDraftInput()) {
+    const result = window.DraftNative.saveDraftInput(raw);
+    if (result !== "ok") {
+      let message = "The draft input could not be saved on this device.";
+      try { message = JSON.parse(result)?.error || message; }
+      catch { if (typeof result === "string" && result) message = result; }
+      throw new Error(message);
+    }
+    mirrorDraftInput(raw || null);
+  } else if (raw) localStorage.setItem(DRAFT_INPUT_KEY, raw);
+  else localStorage.removeItem(DRAFT_INPUT_KEY);
+}
 export function saveState(state) {
   const raw = JSON.stringify(state);
   if (native) {

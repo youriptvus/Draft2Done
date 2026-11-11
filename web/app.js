@@ -22,9 +22,17 @@ import {
 } from "./core.js";
 import { AIClient, ResearchEngine, evidenceNotes } from "./services.js";
 import {
+  informationLinks,
+  informationParts,
+  relatedInformation,
+  safeInformationUrl,
+} from "./information-links.js";
+import {
   native,
   loadState,
   saveState,
+  loadDraftInput,
+  saveDraftInput,
   transport,
   onImported,
   onNotice,
@@ -74,6 +82,34 @@ const button = (action, label, cls = "secondary", extra = "") =>
   `<button class="${cls}" data-action="${action}" ${extra}>${label}</button>`;
 const uid = () => crypto.randomUUID();
 const APP_VERSION = __DRAFT2DONE_VERSION__;
+const DEDICATION =
+  "Dedicated to Victoria Downs, whose inspiration helped bring Draft2Done to life.";
+const DOCUMENT_BYTE_LIMIT = 10 * 1024 * 1024;
+const WORKSPACE_BYTE_LIMIT = 4 * 1024 * 1024;
+const byteLength = (value) => new TextEncoder().encode(value).length;
+let pasteDraft = { text: "", start: 0, end: 0, scroll: 0 },
+  pasteError = "",
+  pasteRecovery = false;
+try {
+  const saved = loadDraftInput();
+  if (saved) {
+    const value = JSON.parse(saved);
+    if (
+      typeof value.text !== "string" ||
+      byteLength(value.text) > DOCUMENT_BYTE_LIMIT
+    )
+      throw new Error("The saved paste is invalid or exceeds the 10 MB limit.");
+    pasteDraft = {
+      text: value.text,
+      start: Math.max(0, Math.min(value.text.length, Number(value.start) || 0)),
+      end: Math.max(0, Math.min(value.text.length, Number(value.end) || 0)),
+      scroll: Math.max(0, Number(value.scroll) || 0),
+    };
+  }
+} catch (error) {
+  pasteRecovery = true;
+  pasteError = `The previous paste could not be restored: ${error.message}`;
+}
 const defaults = {
   autoUpdates: true,
   theme: "dark",
@@ -96,6 +132,7 @@ const defaults = {
   exportFontFamily: "Times New Roman",
   exportFontSize: 12,
   exportLineSpacing: 1.5,
+  informationLinks: false,
 };
 let state = {
   version: 1,
@@ -201,12 +238,87 @@ function empty(title, detail, action = "import", label = "Import a draft") {
   return `<div class="empty-state"><span class="empty-icon">${icon("book", 34)}</span><h2>${title}</h2><p>${detail}</p>${button(action, label, "primary")}</div>`;
 }
 function render() {
+  capturePasteInput();
   if (page === "home") renderHome();
   else if (page === "write") renderWrite();
   else if (page === "research") renderResearch();
   else if (page === "dna") renderDNA();
   else if (page === "projects") renderProjects();
   else renderSettings();
+}
+function capturePasteInput() {
+  const input = document.querySelector("#paste-draft");
+  if (!input) return;
+  pasteDraft = {
+    text: input.value,
+    start: input.selectionStart,
+    end: input.selectionEnd,
+    scroll: input.scrollTop,
+  };
+}
+function pasteFeedback() {
+  const status = document.querySelector("#paste-status");
+  if (!status) return;
+  status.textContent =
+    pasteError ||
+    (pasteDraft.text
+      ? "Paste saved on this device. Use it to create a separate protected paper."
+      : "Your paste stays on this device. Existing papers are kept separately.");
+  status.classList.toggle("paste-warning", Boolean(pasteError));
+}
+function savePasteDraft(edited = false) {
+  capturePasteInput();
+  if (pasteRecovery && !edited) {
+    pasteFeedback();
+    return;
+  }
+  try {
+    if (byteLength(pasteDraft.text) > DOCUMENT_BYTE_LIMIT)
+      throw new Error("This paste exceeds 10 MB. Split it into smaller papers.");
+    saveDraftInput(pasteDraft.text ? JSON.stringify(pasteDraft) : "");
+    pasteRecovery = false;
+    pasteError = "";
+  } catch (error) {
+    pasteError = `Paste not saved: ${error.message} Keep a copy before leaving the app.`;
+  }
+  pasteFeedback();
+}
+function pasteEntry() {
+  return `<section class="paste-card" aria-labelledby="paste-heading"><label id="paste-heading" for="paste-draft">Paste Your Draft</label><p>Pick up where your own writing leaves off.</p><textarea id="paste-draft" rows="5" aria-describedby="paste-status" placeholder="Already started your paper? Paste what you've written here to get started." spellcheck="true">${esc(pasteDraft.text)}</textarea><small id="paste-status" role="status"></small>${button("paste-use", "Use This Draft", "primary large", busy ? "disabled" : "")}</section>`;
+}
+function usePastedDraft() {
+  capturePasteInput();
+  const text = pasteDraft.text;
+  if (busy) throw new Error("Finish or stop the current task first.");
+  if (!text.trim()) throw new Error("Paste some of your writing first.");
+  if (byteLength(text) > DOCUMENT_BYTE_LIMIT)
+    throw new Error("This paste exceeds 10 MB. Split it into smaller papers.");
+  if (recovery)
+    throw new Error("Restore your workspace from a project backup before adding a paper. Your paste is kept separately.");
+  const title = text.match(/[^\r\n]+/)?.[0].trim().slice(0, 80) || "Pasted draft";
+  const project = projectFromDraft(title, text);
+  const next = { ...state, projects: [...state.projects, project], activeId: project.id };
+  if (byteLength(JSON.stringify(next)) > WORKSPACE_BYTE_LIMIT)
+    throw new Error("This paper would exceed the 4 MB workspace limit. Back up and remove older papers, or split this draft. Your paste is still here.");
+  // This explicit action saves the new paper before clearing its separate staging copy.
+  // A failed write leaves the existing workspace and the paste untouched.
+  saveState(next);
+  state = next;
+  clearTimeout(saveTimer);
+  dirty = false;
+  document.querySelector("#paste-draft").value = "";
+  pasteDraft = { text: "", start: 0, end: 0, scroll: 0 };
+  try {
+    saveDraftInput("");
+    pasteRecovery = false;
+    pasteError = "";
+  } catch {
+    pasteError = "Your paper is saved. The old paste could not be cleared from this device.";
+  }
+  page = "write";
+  tab = defaultWritingTab();
+  render();
+  toast("New paper saved. Your starting draft is protected.");
 }
 function paperCards() {
   return [...state.projects]
@@ -219,8 +331,14 @@ function paperCards() {
 }
 function renderHome() {
   shell(
-    `<section class="welcome"><div class="eyebrow">A LITTLE PROGRESS GOES A LONG WAY</div><h1>Your ideas.<br>Your voice.<br><em>Let’s finish this.</em></h1><p>A calmer space to pick up your paper<br>and take it all the way.</p><div class="welcome-art" aria-hidden="true"><div class="art-page"><span></span><span></span><span></span><span></span><b>${icon("check", 22)}</b></div><i class="orbit one"></i><i class="orbit two"></i></div></section><div class="start-actions">${button("import", icon("upload") + " Import your draft", "primary large")}${button("new", icon("plus") + " New workspace", "secondary large")}</div><div class="reassurance">${icon("shield", 16)} Your writing stays yours. Original drafts are protected.</div><section class="section"><div class="section-heading"><h2>${state.projects.length ? "Pick up where you left off" : "Start with something you’ve written"}</h2>${state.projects.length ? button("page", "View all", "text-button", 'data-id="projects"') : ""}</div>${state.projects.length ? paperCards() : `<div class="intro-card"><span class="tinted-icon">${icon("spark")}</span><div><strong>A research partner, at your pace.</strong><p>Bring a draft. Explore ideas, find sources, and review every proposed addition.</p>${button("sample", "Try a fictional sample " + icon("arrow", 15), "text-button")}</div></div>`}</section><div class="version-footer">DRAFT2DONE · ${APP_VERSION}</div>`,
+    `<section class="welcome"><div class="eyebrow">A LITTLE PROGRESS GOES A LONG WAY</div><h1>Your ideas.<br>Your voice.<br><em>Let’s finish this.</em></h1><p>A calmer space to pick up your paper<br>and take it all the way.</p><div class="welcome-art" aria-hidden="true"><div class="art-page"><span></span><span></span><span></span><span></span><b>${icon("check", 22)}</b></div><i class="orbit one"></i><i class="orbit two"></i></div></section>${pasteEntry()}<div class="start-actions">${button("import", icon("upload") + " Import your draft", "primary large")}${button("new", icon("plus") + " New workspace", "secondary large")}</div><div class="reassurance">${icon("shield", 16)} Your writing stays yours. Original drafts are protected.</div><section class="section"><div class="section-heading"><h2>${state.projects.length ? "Pick up where you left off" : "Start with something you’ve written"}</h2>${state.projects.length ? button("page", "View all", "text-button", 'data-id="projects"') : ""}</div>${state.projects.length ? paperCards() : `<div class="intro-card"><span class="tinted-icon">${icon("spark")}</span><div><strong>A research partner, at your pace.</strong><p>Bring a draft. Explore ideas, find sources, and review every proposed addition.</p>${button("sample", "Try a fictional sample " + icon("arrow", 15), "text-button")}</div></div>`}</section><div class="version-footer">DRAFT2DONE · ${APP_VERSION}</div>`,
   );
+  const input = document.querySelector("#paste-draft");
+  // Assign the value explicitly: HTML parsing discards a textarea's first newline.
+  input.value = pasteDraft.text;
+  input.setSelectionRange(pasteDraft.start, pasteDraft.end);
+  input.scrollTop = pasteDraft.scroll;
+  pasteFeedback();
 }
 function renderWrite() {
   const p = getProject();
@@ -237,6 +355,8 @@ function renderWrite() {
   shell(
     `<div class="workspace-heading"><div><div class="eyebrow">YOUR WORKSPACE</div><h1 class="paper-title" data-action="rename" tabindex="0">${esc(p.title)}</h1><span class="save-line"><i></i><span id="save-status">${dirty ? "Unsaved changes" : "Saved on device"}</span></span></div>${button("paper-menu", icon("menu"), "icon-button", 'aria-label="Paper actions"')}</div><div class="progress-card"><div><span><strong id="current-count">${n.current.toLocaleString()}</strong> <span class="muted">/ <span id="minimum-count">${n.minimum.toLocaleString()}</span> words</span></span>${button("requirements", "Set goal " + icon("chevron", 14), "text-button")}</div><div class="progress-track"><i id="word-progress" style="width:${Math.min(100, n.percent)}%"></i></div><small id="remaining-label">${n.remaining > 0 ? `${n.remaining.toLocaleString()} words to your goal` : "Minimum reached · ready to review"}${n.maximum ? ` · maximum ${n.maximum.toLocaleString()}` : ""}</small></div><div class="segmented" role="tablist">${["draft", "helper", "complete"].map((t) => `<button role="tab" aria-selected="${tab === t}" data-action="tab" data-id="${t}" class="${tab === t ? "selected" : ""}">${t === "draft" ? "My draft" : t === "helper" ? "Helper" : "Complete"}${t === "complete" && p.proposals.some((s) => s.status === "pending") ? '<i class="notification-dot"></i>' : ""}</button>`).join("")}</div>${tab === "draft" ? draftPanel(p) : tab === "helper" ? helperPanel(p) : completePanel(p)}`,
   );
+  const editor = document.querySelector("#draft-editor");
+  if (editor) editor.value = p.workingText;
 }
 const editorHistories = new Map();
 function editingHistory(p) {
@@ -306,7 +426,34 @@ function paragraphOptions(text) {
 }
 function draftPanel(p) {
   const h = editingHistory(p);
-  return `<section class="editor-card"><div class="editor-toolbar"><div>${button("format", "B", "format-button", 'data-format="bold" aria-label="Bold Markdown"')}${button("format", "<em>I</em>", "format-button", 'data-format="italic" aria-label="Italic Markdown"')}${button("format", "H", "format-button", 'data-format="heading" aria-label="Heading Markdown"')}</div><div>${button("editor-undo", "Undo", "text-button", h.undo.length ? "" : "disabled")}${button("editor-redo", "Redo", "text-button", h.redo.length ? "" : "disabled")}</div>${button("original", icon("shield", 16), "icon-button small", 'aria-label="View protected original"')}</div><div class="paragraph-navigation"><label for="paragraph-nav">Go to paragraph</label><select id="paragraph-nav"><option value="">Choose a paragraph</option>${paragraphOptions(p.workingText)}</select></div><textarea id="draft-editor" aria-label="Working draft" spellcheck="true" placeholder="Paste the paper you’ve already started. Your writing is the starting point.">${esc(p.workingText)}</textarea><div class="editor-footer"><span>${icon("pen", 13)} Working copy · Markdown friendly</span>${button("save", icon("check", 14) + " Save", "text-button")}</div></section><div class="context-card"><span class="tinted-icon">${icon("spark")}</span><div><strong>A little direction?</strong><p>Find your next idea with Helper, or review a continuation in Complete.</p></div></div>`;
+  return `<section class="editor-card"><div class="editor-toolbar"><div>${button("format", "B", "format-button", 'data-format="bold" aria-label="Bold Markdown"')}${button("format", "<em>I</em>", "format-button", 'data-format="italic" aria-label="Italic Markdown"')}${button("format", "H", "format-button", 'data-format="heading" aria-label="Heading Markdown"')}</div><div>${button("editor-undo", "Undo", "text-button", h.undo.length ? "" : "disabled")}${button("editor-redo", "Redo", "text-button", h.redo.length ? "" : "disabled")}</div>${button("original", icon("shield", 16), "icon-button small", 'aria-label="View protected original"')}</div><div class="paragraph-navigation"><label for="paragraph-nav">Go to paragraph</label><select id="paragraph-nav"><option value="">Choose a paragraph</option>${paragraphOptions(p.workingText)}</select></div><textarea id="draft-editor" aria-label="Working draft" spellcheck="true" placeholder="Paste the paper you’ve already started. Your writing is the starting point.">${esc(p.workingText)}</textarea><div class="editor-footer"><span>${icon("pen", 13)} Working copy · Markdown friendly</span>${button("save", icon("check", 14) + " Save", "text-button")}</div></section>${informationReader(p)}<div class="context-card"><span class="tinted-icon">${icon("spark")}</span><div><strong>A little direction?</strong><p>Find your next idea with Helper, or review a continuation in Complete.</p></div></div>`;
+}
+function informationContext(p) {
+  return { sources: p.sources, researchBriefs: p.researchBriefs };
+}
+function informationCopy(p) {
+  const links = informationLinks(p.workingText, informationContext(p));
+  return informationParts(p.workingText, links)
+    .map((part) => part.link
+      ? `<button class="information-link" data-action="information-concept" data-index="${links.indexOf(part.link)}" data-start="${part.link.start}" data-end="${part.link.end}" aria-label="Explore ${esc(part.text)}">${esc(part.text)}</button>`
+      : esc(part.text))
+    .join("");
+}
+function informationReader(p) {
+  return `<section class="information-reader"><label class="checkbox-row"><span>Read with information links</span><input id="information-links-enabled" type="checkbox" ${state.settings.informationLinks ? "checked" : ""}></label><small>Optional research suggestions in a separate reading view. Your draft and exported citations stay unchanged. No query or page opens automatically.</small>${state.settings.informationLinks ? `<div class="information-copy" tabindex="0" aria-label="Draft reading preview">${informationCopy(p)}</div><small>Suggestions are identified on this device and may miss a concept or its meaning. Tap a term to review saved sources or a search query.</small>` : ""}</section>`;
+}
+function showInformation(p, target) {
+  const link = informationLinks(p.workingText, informationContext(p))[Number(target.dataset.index)];
+  if (!link || link.start !== Number(target.dataset.start) || link.end !== Number(target.dataset.end)) {
+    toast("The draft changed. Choose a term from the updated reading view.");
+    return;
+  }
+  const related = relatedInformation(link, informationContext(p));
+  modal(
+    `Explore ${link.label}`,
+    `<p>Information links help you explore a concept; they are separate from formal citations. Check that the suggested meaning fits your paragraph.</p><div class="information-sources">${related.map((source) => `<article><h3>${esc(source.title)}</h3><small>${esc(source.verification === "web-returned" ? "Returned by web research" : source.verification === "abstract" ? "Record and abstract/extract retrieved" : "Bibliographic record retrieved")}</small><p>${esc(source.detail)}</p><small>${esc(source.url)}</small>${button("information-open", "Open saved source", "secondary", `data-url="${esc(source.url)}"`)}</article>`).join("") || "<p>No relevant retrieved source is saved for this term yet. Review a short query to find one.</p>"}</div><label class="field-label" for="information-query">Research query to review<input id="information-query" maxlength="240" value="${esc(link.query)}"></label><small>${state.settings.online ? "Review this query in Research before choosing Search. Nothing is sent by opening this view." : "Source search is off. You can review a query in Research and choose whether to enable Online. Opening a saved web page requires internet."}</small>`,
+    button("information-research", "Review research query", "primary"),
+  );
 }
 function draftReview(p, analysis) {
   return `<section class="card"><h3>Your draft at a glance</h3><details><summary>Argument and paragraph outline</summary><ol>${analysis.outline.map((s) => `<li><strong>${esc(s.heading)}</strong> · ${s.words} words<p>${esc(s.summary)}</p></li>`).join("")}</ol></details><details open><summary>What still needs attention</summary><ul>${analysis.gaps.map((g) => `<li>${esc(g)}</li>`).join("") || "<li>No rule-based gaps detected. Check the assignment yourself.</li>"}</ul></details>${analysis.unfinished.length ? `<div class="alert"><strong>Check the unfinished parts</strong><ul>${analysis.unfinished.map((g) => `<li>${esc(g)}</li>`).join("")}</ul><p>Complete lets you review whether to finish the last thought or start a new paragraph.</p></div>` : ""}<details><summary>Research questions to explore</summary>${analysis.researchQuestions.map((q, i) => `<p>${esc(q)}</p>${button("research-question", "Review this search", "text-button", `data-index="${i}"`)}`).join("")}</details><small>These are visible draft observations, not a grading or factual assessment.</small></section>`;
@@ -340,11 +487,17 @@ function showSuggestion(suggestion) {
   );
 }
 function helperPanel(p) {
+  return helperContent(p) + informationReader(p);
+}
+function helperContent(p) {
   const analysis = analyzeDraft(p),
     note = p.helperNotes || state.notes[p.id] || "";
   return `<section class="mode-intro"><span class="eyebrow">YOU WRITE. WE HELP YOU FORWARD.</span><h2>A fresh perspective on your draft.</h2><p>Explore the argument, ask better questions, and find a next step that feels like you.</p>${button("analyze", icon("spark", 17) + " Analyze my draft", "primary")}</section>${countWords(p.workingText) < 40 ? '<div class="alert">Add at least 40 words of your own writing for useful draft assistance.</div>' : `<div class="analysis-summary"><span class="pill">Draft observations · on device</span><h3>${esc(analysis.topic)}</h3><p>${esc(analysis.thesis)}</p><small>Topic and thesis are candidates inferred from your words. Check that they reflect your intention.</small></div>${draftReview(p, analysis)}<h3 class="subheading">Ways to move forward</h3><div class="suggestion-list">${analysis.suggestions.map((s, i) => `<button class="suggestion-card" data-action="suggestion" data-index="${i}"><span class="suggestion-number">0${i + 1}</span><span><strong>${esc(s.title)}</strong><small>${esc(s.detail)}</small></span>${icon("chevron", 16)}</button>`).join("")}</div>`}${note ? `<section class="response-card"><div class="section-heading"><h3>AI assistance</h3><span class="pill">Review carefully</span></div>${helperAdvice(note)}<small>Model suggestions may contain errors. Verify factual claims against the research library.</small></section>` : ""}`;
 }
 function completePanel(p) {
+  return completeContent(p) + informationReader(p);
+}
+function completeContent(p) {
   const n = progress(p);
   return `<section class="mode-intro"><span class="eyebrow">YOUR VOICE, CONTINUED</span><h2>Keep the momentum going.</h2><p>A proposed continuation, guided by your draft and Writer DNA. Every section is yours to review.</p><div class="inline-options"><label>Voice<select id="voice-select"><option value="original" ${p.voice === "original" ? "selected" : ""}>Original Voice</option><option value="polished" ${p.voice === "polished" ? "selected" : ""}>Polished Voice</option></select></label><label>Minimum words<input id="minimum-input" type="number" min="1" max="50000" value="${p.minimum}"></label></div>${n.remaining ? button("generate", icon("spark", 17) + " Generate continuation", "primary") : `<div class="alert success">You’ve reached your minimum. Use Helper for research and refinement, or update your goal.</div>`}<div class="mode-footnote">${icon("shield", 14)} Proposed text stays separate until you accept it.</div></section><p class="muted">${n.original} original; ${n.current} accepted; ${n.proposed} proposed body words</p><div class="source-summary">${icon("book", 16)} ${p.sources.filter((s) => s.included !== false).length} included sources ${button("page", "Review sources", "text-button", 'data-id="research"')}</div>${p.proposals.filter((s) => s.status === "pending").length ? `<div class="section-heading"><h3>Suggested additions</h3><span class="pill">${n.proposed} proposed words</span></div>` : ""}${p.proposals
     .filter((s) => s.status === "pending")
@@ -470,7 +623,7 @@ function updateExportAppearance(p) {
 function modal(title, body, footer = "") {
   if (remoteConsent) finishRemoteConsent(false);
   document.querySelector("#modal-root").innerHTML =
-    `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-heading"><h2>${title}</h2>${button("modal-close", icon("close"), "icon-button", 'aria-label="Close dialog"')}</div><div class="modal-body">${body}</div>${footer ? `<div class="modal-footer">${footer}</div>` : ""}</section></div>`;
+    `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-heading"><h2>${esc(title)}</h2>${button("modal-close", icon("close"), "icon-button", 'aria-label="Close dialog"')}</div><div class="modal-body">${body}</div>${footer ? `<div class="modal-footer">${footer}</div>` : ""}</section></div>`;
   setTimeout(() => {
     const dialog = document.querySelector(".modal");
     if (dialog && !dialog.contains(document.activeElement))
@@ -953,6 +1106,30 @@ async function handleAction(action, target) {
   const p = getProject(),
     id = target.dataset.id;
   switch (action) {
+    case "information-concept":
+      if (p && state.settings.informationLinks) showInformation(p, target);
+      break;
+    case "information-open": {
+      const url = safeInformationUrl(target.dataset.url);
+      if (!url) throw new Error("This source does not have a valid public web address.");
+      openExternal(url);
+      break;
+    }
+    case "information-research": {
+      const query = document.querySelector("#information-query").value.trim();
+      if (!query || query.length > 240 || /[\r\n]/.test(query))
+        throw new Error("Use a short research query of up to 240 characters.");
+      state.lastQuery = query;
+      persist();
+      closeModal();
+      page = "research";
+      render();
+      toast("Review the query and providers, then choose Search when ready.");
+      break;
+    }
+    case "paste-use":
+      usePastedDraft();
+      break;
     case "remote-send":
       finishRemoteConsent(true);
       break;
@@ -1704,7 +1881,7 @@ async function handleAction(action, target) {
     case "about":
       modal(
         `Draft2Done ${APP_VERSION}`,
-        `<p><strong>Your Draft. Your Voice. Done.</strong></p><p>Android release. Private on-device projects, direct ChatGPT writing with approval before each request, and optional scholarly source search. Computer/server AI is an advanced option. No AI model is bundled.</p><p>${native ? "Native Android storage and document picker are active." : "Browser preview: data is stored in this browser only."}</p><p>Windows desktop development is deferred.</p>`,
+        `<p><strong>Your Draft. Your Voice. Done.</strong></p><p>Android release. Private on-device projects, direct ChatGPT writing with approval before each request, and optional scholarly source search. Computer/server AI is an advanced option. No AI model is bundled.</p><p class="about-dedication">${DEDICATION}</p><p>${native ? "Native Android storage and document picker are active." : "Browser preview: data is stored in this browser only."}</p><p>Windows desktop development is deferred.</p>`,
       );
       break;
   }
@@ -1746,7 +1923,9 @@ document.addEventListener("click", (e) => {
 document.addEventListener("input", (e) => {
   const p = getProject(),
     el = e.target;
-  if (el.id === "draft-editor" && p) {
+  if (el.id === "paste-draft") {
+    savePasteDraft(true);
+  } else if (el.id === "draft-editor" && p) {
     const history = trackEdit(p, e.inputType);
     const edited = updateWorkingText(p, el.value);
     history.currentText = edited.workingText;
@@ -1769,6 +1948,8 @@ document.addEventListener("input", (e) => {
     document.querySelector("#remaining-label").textContent = n.remaining
       ? `${n.remaining.toLocaleString()} words to your goal`
       : "Minimum reached · ready to review";
+    const reading = document.querySelector(".information-copy");
+    if (reading) reading.innerHTML = informationCopy(edited);
   } else if (el.classList.contains("proposal-editor")) {
     p.proposals.find((s) => s.id === el.dataset.id).text = el.value;
     persist();
@@ -1780,6 +1961,12 @@ document.addEventListener("input", (e) => {
 document.addEventListener("change", (e) => {
   const el = e.target,
     p = getProject();
+  if (el.id === "information-links-enabled") {
+    state.settings.informationLinks = el.checked;
+    persist();
+    render();
+    return;
+  }
   if (el.id === "paragraph-nav" && el.value !== "") {
     const editor = document.querySelector("#draft-editor"),
       start = Number(el.value);
@@ -1878,16 +2065,20 @@ document.addEventListener("change", (e) => {
     render();
   }
 });
-window.addEventListener("pagehide", flushAutosave);
+function flushLocalChanges() {
+  savePasteDraft();
+  flushAutosave();
+}
+window.addEventListener("pagehide", flushLocalChanges);
 window.addEventListener("error", (e) => {
   lastError = e.message;
   console.error(e.error || e.message);
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) flushAutosave();
+  if (document.hidden) flushLocalChanges();
 });
 chatgptModels = state.settings.chatgptModels || [];
-window.NativeEvents.pause = flushAutosave;
+window.NativeEvents.pause = flushLocalChanges;
 window.NativeEvents.back = () => {
   if (document.querySelector(".modal-backdrop")) {
     closeModal();

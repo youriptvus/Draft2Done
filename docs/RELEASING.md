@@ -1,22 +1,32 @@
 # Signed releases and automatic updates
 
-The current prepared release is **0.1.2, Android version code 2**. Its APK and GitHub upload files are in `D:\Draft2Done\current release`. The user previously published [v0.1.0](https://github.com/youriptvus/Draft2Done/releases/tag/v0.1.0); its public downloads were verified. All commits/uploads remain manual; the development agent performs no staging, commits, push or publication.
+Signed candidate: **0.1.4, Android version code 3**. Chrome sign-in is repaired and verified on the Moto G; [current verification](VERIFICATION.md) binds the executed tests to the installed APK. Required hosted-search verification remains incomplete, so the overall release is not fully verified. The previously inspected public release was [v0.1.2](https://github.com/youriptvus/Draft2Done/releases/tag/v0.1.2), package/version 0.1.2/code 2, despite the page's mismatched display title at that inspection. No new public-release inspection or publication is part of this local repair.
 
-After the final build, run `scripts\prepare-repo.ps1` from the build workspace to copy source and verified release assets into `D:\Draft2Done\repo\Draft2Done` and refresh `D:\Draft2Done\current release`. The script checks that checkout's origin, leaves `.git` intact, excludes signing credentials/data/tools, and performs no staging, commit, push or publication. It does not delete extra checkout files. Only older recognized generated artifacts directly inside `current release` are removed after the new files are copied; historical `dist` outputs and unrelated files are retained. Review the resulting diff before your manual commit.
+At the user's request, this repair retains 0.1.4/code 3. A phone already running earlier 0.1.4/code 3 bytes needs explicit manual installation of the repaired APK; the automatic updater requires a strictly higher versionCode. Do not describe this same-code repair as an automatic update. Future releases must increase versionCode.
 
-`release-assets/` contains the signed APK, `latest.json`, public build/signature records and upload instructions. APKs are intentionally ignored by Git; upload the existing local APK and `latest.json` together through GitHub Releases. A source commit alone is not a release and will not activate the updater.
+Before edits, source and four release assets were preserved at `test-results/checkpoints/v0.1.2-before-0.1.4-20261111`; historical versioned `dist` files remain intact. Keep both 0.1.0 and 0.1.2. The new version must use the same signing key and package `io.draft2done.app` to preserve installed projects.
 
-Build outputs:
+## Prepare a candidate locally
 
-- `Draft2Done-0.1.2.apk`: signed Android application.
-- `Draft2Done-0.1.2-build.json`: SHA-256, size and package/version details.
-- `Draft2Done-0.1.2-signature.txt`: verification and public certificate fingerprints.
-- `latest.json`: update manifest with version, versionCode, exact GitHub Release APK URL and SHA-256.
+The project uses project-local Android SDK tools, not Gradle. After integrated source freeze, run `scripts\build-android.ps1 -Clean` for fresh generated web/native output, followed by the separate device-test build and regression checks. Do not claim a Gradle build. `-Clean` preserves tools, signing files and old `dist` assets and cannot be combined with `-SkipWebBuild`.
 
-For this release, manually commit/push the reviewed source and create a stable GitHub Release tagged **`v0.1.2`**. Upload **`Draft2Done-0.1.2.apk`** and **`latest.json`** from `current release` together. Keep v0.1.0 intact. Version code 2 enables an upgrade from 0.1.0/code 1; users already running 0.1.2 are up to date. A future release must increase `android:versionCode` and update `android:versionName`, `package.json` and the lockfile's root package version. Build and preparation helpers derive filenames, tags and URLs and reject mismatched package/manifest versions. Rebuild with the **same** private signing key. Draft/prerelease releases are ignored by the updater.
+Current derived output names:
 
-Never upload `signing/credentials.json`, the PKCS12 key, local projects, models or OAuth credentials. Back up the signing directory privately. Losing that key prevents installing a compatible update over this signing identity. Key rotation is not implemented.
+- `Draft2Done-0.1.4.apk`
+- `Draft2Done-0.1.4-build.json` (hash, size, package, version and versionCode)
+- `Draft2Done-0.1.4-signature.txt`
+- `latest.json` (version 0.1.4/code 3 and exact v0.1.4 GitHub Release asset URL)
 
-The app calls `GET https://api.github.com/repos/youriptvus/Draft2Done/releases/latest`, finds the `latest.json` asset and accepts repository-specific release URLs. Redirects are restricted to GitHub's official asset hosts over HTTPS. The hash, expected package/version and installed certificate are checked before exposing the APK through a private content provider to Android's installer. Android enforces package integrity/signature and asks for confirmation.
+Verify the actual package/version/code, bundled web version, signatures, ZIP alignment and independently computed hash before preparation. Test the same-key upgrade without uninstalling or clearing app data.
 
-The v0.1.0 public APK's size, hash, package/version, target API and v2/v3 signing certificate were verified, and the Samsung successfully fetched that public manifest. The local 0.1.0→0.1.2 same-key upgrade preserved the workspace and encrypted account; welcome/About/native version displays agree. A production GitHub-delivered 0.1.2 installation can be verified after the user publishes that release. The updater never uninstalls the app. See VERIFICATION.md for executed checks and remaining limits.
+For this blocked candidate, run `scripts\prepare-repo.ps1 -Candidate` to copy reviewed source and signed assets to `D:\Draft2Done\repo\Draft2Done` and refresh `D:\Draft2Done\current release`. The candidate flag places an incomplete-verification notice in both delivery folders. The script verifies the checkout origin, excludes private signing/data/tools, leaves `.git` intact and does not stage, commit, push or publish. Only old recognized generated files directly in `current release` are removed after copying the new files. Old `dist` files and unrelated checkout files remain untouched.
+
+## Release gate and manual publication
+
+Successful real ChatGPT web search remains unverified. The earlier pre-repair Samsung baseline returned `subscription_sharing_usage_limit_exceeded`; this sign-in repair sent no inference and does not establish the current account's usage allowance. Candidate packaging may proceed, but it must not be called fully verified or release-ready while the required genuine tool check is incomplete. Preserve failed/blocked evidence and report it in VERIFICATION.md.
+
+Publication requires the owner's explicit authorization. If authorized later, manually create a stable GitHub Release tagged **v0.1.4**, with a matching title, and upload the exact current `Draft2Done-0.1.4.apk` and `latest.json` together. Committing source or JSON alone does not activate updates. APKs are intentionally gitignored. Draft/prerelease releases are ignored by the updater.
+
+The updater reads `https://api.github.com/repos/youriptvus/Draft2Done/releases/latest`, restricts release URLs and redirects to approved GitHub HTTPS hosts, and checks APK hash, package, strictly increasing code and installed signing certificate. Android controls final installation approval; the updater never uninstalls the app. A local ADB upgrade test does not substitute for a real published-update installation test.
+
+Never upload `signing/credentials.json`, the private PKCS12 key, personal projects, OAuth tokens or model files. Losing the signing key prevents compatible updates; key rotation is not implemented. Future releases increase Android versionCode and keep Android/package/lockfile versions consistent; the helpers derive names, tags and URLs from that metadata.

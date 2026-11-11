@@ -52,6 +52,7 @@ public final class MainActivity extends Activity {
     private final ExecutorService workers = Executors.newFixedThreadPool(3);
     private final Map<String, NetworkTask> requests = new ConcurrentHashMap<>();
     private WorkspaceStore workspace;
+    private DraftInputStore draftInput;
     private ChatGPTConnection chatgpt;
     private AppUpdates updates;
     private WebView webView, printView;
@@ -65,6 +66,7 @@ public final class MainActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         workspace = new WorkspaceStore(getFilesDir(), STATE_LIMIT);
+        draftInput = new DraftInputStore(new java.io.File(getFilesDir(),"draft-input.json"));
         chatgpt = new ChatGPTConnection(this);
         updates = new AppUpdates(this);
         WebView.setWebContentsDebuggingEnabled(false);
@@ -173,6 +175,15 @@ public final class MainActivity extends Activity {
         }
         @JavascriptInterface public String appInfo() {
             return "{\"name\":\"Draft2Done\",\"version\":"+JSONObject.quote(AppVersion.name(MainActivity.this))+",\"platform\":\"android\",\"packageId\":"+JSONObject.quote(getPackageName())+",\"maxImportBytes\":"+FILE_LIMIT+",\"maxStateBytes\":"+STATE_LIMIT+"}";
+        }
+        @JavascriptInterface public boolean hasDraftInputHistory(){return draftInput.hasHistory();}
+        @JavascriptInterface public String loadDraftInput(){
+            try{return draftInput.load();}
+            catch(Exception error){return "{\"error\":\"The saved paste could not be read. Its private file was retained. Keep a copy before replacing it.\"}";}
+        }
+        @JavascriptInterface public String saveDraftInput(String raw){
+            try{return draftInput.save(raw);}
+            catch(Exception error){return "{\"error\":\"Paste could not be saved to private storage. Keep a copy before leaving the app.\"}";}
         }
         @JavascriptInterface public void setAppearance(String theme){
             final boolean dark="dark".equals(theme);

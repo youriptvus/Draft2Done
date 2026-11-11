@@ -2,6 +2,21 @@
 
 The [original brief](ORIGINAL-BRIEF.md) is preserved verbatim. [User decisions](DECISIONS.md) record subsequent changes. The current deliverable is the signed Android APK; Windows desktop packaging remains deferred by the user's explicit choice.
 
+## 0.1.4 development scope
+
+The [new release brief](RELEASE-BRIEF-0.1.4.md) preserves the attachment and the user's target override from 0.1.3 to **0.1.4/code 3**. Existing 0.1.2 functionality and artifacts remain the baseline; entries below describe that baseline until the current verification record reports a new executed check.
+
+| Added requirement | Required behavior | Current verification |
+| --- | --- | --- |
+| Live search investigation | Diagnose from actual responses; credible relevant results, valid URLs and explicit consent; retain cancellation/failure/draft safety | Earlier Samsung baseline reported `subscription_sharing_usage_limit_exceeded` / `invalid_request_error`; hosted-tool success remains unverified. No inference was sent during the current sign-in repair; current account usage is unknown |
+| Contextual information links | Useful concepts, restrained linking, relevant retrieved source URLs, toggle, user-triggered opening and non-destructive reading view | Unit/browser coverage and current Moto UI checks passed; earlier pre-repair public-source checks are historical. No submitted-text/export/bibliography mutation; relevance and URL checks do not prove claims |
+| Paste Your Draft | Prominent input above import, exact requested label/placeholder/button, long text, original preservation and interruption-safe entry | 11 browser groups, 34 actual native-store checks and real force-stop setup/verify (5/16) passed; touch, keyboard, rotation and reload verified |
+| Permanent About dedication | Name, version 0.1.4, description and exact Victoria Downs sentence | Current browser and actual-phone checks passed |
+| Chrome sign-in reliability | Keep the phone's local callback available while Chrome is open; tolerate idle/broken peers; preserve PKCE, state, signed identity and encrypted credentials | Actual normal Chrome authorization succeeds on Moto G 2025/Android 16; connection survives real force-stop, error clears, service stops and live model catalog loads. Native listener/service checks pass 11; see SIGN-IN-REPAIR-0.1.4.md |
+| Full regression and candidate | Clean existing-SDK build, same identity/key, upgrade safety, original/revision/source retention and current artifact audit | Current Moto checks: 71 standard, 34 native staging, 20 UI, 5/16 cold restart, seven upgrade and 24 artifact checks; installed APK matches final hash. Earlier 17 document/55 public-source checks belong to preserved pre-repair bytes. See VERIFICATION.md for host/copy boundaries; hosted-search gate remains unverified; no Gradle run is claimed |
+
+The hosted web-search blocker cannot be waived by a mock, compilation, fluent response, prose URL or a successful different provider. New tests must distinguish passed, failed, blocked and unexecuted checks. See VERIFICATION.md for the current record and VERIFICATION-0.1.2.md for preserved historical results.
+
 | Brief area | Android implementation | Verification or remaining boundary |
 | --- | --- | --- |
 | Project isolation | Dedicated directory, local Git, project-local tools and persistent private signing key | User-managed publication only; no automatic commits/push, model download or unrelated project changes |
@@ -23,9 +38,9 @@ The [original brief](ORIGINAL-BRIEF.md) is preserved verbatim. [User decisions](
 | Storage/privacy | Atomic private workspace, previous-valid recovery, optional autosave, background flush and export backups | Actual cache-only fault tests. Direct writing consent previews the full immutable payload; changed draft/requirements/profile/model invalidate approval |
 | Untrusted inputs | Escaped UI, bounded documents/network, data-separated prompts and pinned-origin native bridge | No document or source can execute commands or select arbitrary file paths |
 | Settings | Appearance/autosave, backend/model/context, default mode/voice/citations/counts/export typography and providers | Defaults apply to both new workspaces and imported documents; project backups retain their own settings. Library caching and source verification use fixed saved-library/manual-Verify behavior, without configurable cache/verification policy knobs |
-| ChatGPT account connection | Browser OAuth/PKCE, signed identity verification, encrypted native sessions, actual account model selection; primary writing and separate research routes | Real sign-in, catalog, token refresh, revoked-token rejection, writing and query-only research pass. Web-tool checks and historical usage limits are recorded in VERIFICATION.md |
+| ChatGPT account connection | Browser OAuth/PKCE, signed identity verification, encrypted native sessions, actual account model selection; primary writing and separate research routes | Current repaired Moto passes actual Chrome sign-in, catalog and cold-restart persistence. Earlier token refresh/revocation, writing and query-only research results are historical. No current inference or web-tool success is inferred from authentication; see VERIFICATION.md |
 | Model quality | Actual eligible-account recommendations; existing Llama and Qwen server comparisons, schema/context/citation checks and descriptive style evaluations | No unsupported claim of a best untested model, factual correctness or exact voice fidelity. No model downloaded; current optional-server tag compatibility is documented in MODELS.md |
-| Automatic updates | Default on, public stable GitHub releases at youriptvus/Draft2Done, checksum/package/version/certificate validation | Public v0.1.0 download/check verified; local same-key upgrade to 0.1.2/code 2 preserves workspace/session; production GitHub-delivered 0.1.2 installation awaits manual publication |
+| Automatic updates | Default on, public stable GitHub releases at youriptvus/Draft2Done, checksum/package/version/certificate validation | Public v0.1.2 assets/source verified; same-key 0.1.2→0.1.4/code 3 upgrade passed and preserves workspace/session; future public delivery remains separate and unexecuted |
 | QA and packaging | Unit, browser, document, native boundary, actual model/source tests, signed APK and install | See [verification](VERIFICATION.md) for executed results and honest model-quality findings |
 | Windows executable/installer | Deferred | Android priority supersedes the original Windows-first delivery order |
 

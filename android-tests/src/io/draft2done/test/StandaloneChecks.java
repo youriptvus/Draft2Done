@@ -1,6 +1,18 @@
 package io.draft2done.test;
 
+import android.app.Activity;
+import android.util.AtomicFile;
 import org.json.JSONObject;
+import org.json.JSONTokener;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Locale;
+import java.util.UUID;
 
 /** Phone UI/bridge integration fixtures. No assist request reaches a provider. */
 final class StandaloneChecks {
@@ -8,8 +20,25 @@ final class StandaloneChecks {
     interface Check { void run(boolean condition,String label) throws Exception; }
     interface Click { void run(String selector) throws Exception; }
     interface Capture { void run(String name) throws Exception; }
+    private static final String METADATA="qa-standalone-preservation.json";
     private StandaloneChecks() {}
-    static void run(JS js,Check check,Click click,Capture capture) throws Exception {
+    static void run(Activity activity,JS js,Check check,Click click,Capture capture) throws Exception {
+        File metadataFile=new File(activity.getCacheDir(),METADATA);
+        if(metadataFile.exists())throw new IOException("Standalone preservation needs recovery before another test.");
+        String prefix="Draft2Done-QA-"+UUID.randomUUID().toString().replace("-","");
+        NativeDocumentWorkflowChecks.WorkspaceSnapshot saved=new NativeDocumentWorkflowChecks.WorkspaceSnapshot(activity,js::run,prefix);
+        JSONObject baseline=new JSONObject().put("prefix",prefix);
+        boolean preserved=false;
+        try {
+            String raw=decode(js.run("localStorage.getItem('draft2done-paste-draft')"));
+            String nativeRaw=nativeStage(js);
+            if(nativeRaw!=null){JSONObject nativeValue;try{nativeValue=new JSONObject(nativeRaw);}catch(Exception invalid){throw new IOException("Unreadable native pending input was left untouched.");}if(!(nativeValue.opt("text") instanceof String))throw new IOException("Unreadable native pending input was left untouched.");}
+            baseline.put("localPresent",raw!=null).put("localRaw",raw==null?JSONObject.NULL:raw)
+                .put("nativePresent",nativeRaw!=null).put("nativeRaw",nativeRaw==null?JSONObject.NULL:nativeRaw)
+                .put("displayText",decode(js.run("document.querySelector('#paste-draft')?.value||''")))
+                .put("account",accountFingerprint(js));
+            writeMetadata(metadataFile,baseline);preserved=true;
+            js.run("const s=window.Draft2Done.getState();s.settings.autoUpdates=false;s.settings.autosave=true;s.settings.defaultMode='draft';return true;");
         check.run("true".equals(js.run("JSON.parse(window.DraftNative.chatgptStatus()).connected===true")),"Existing encrypted ChatGPT session is connected; no sign-in needed");
         click.run("[data-action=page][data-id=settings]");
         if("true".equals(js.run("!!document.querySelector('[data-action=chatgpt-use-writing]')")))click.run("[data-action=chatgpt-use-writing]");
@@ -83,7 +112,61 @@ final class StandaloneChecks {
         } finally {
             js.run("if(window.__standaloneQA){window.DraftNative=window.__standaloneQA.real;delete window.__standaloneQA;}return true;");
         }
+        } finally {
+            if(preserved)restore(activity,js,check,click,saved,baseline);
+            else {saved.clear(activity);new AtomicFile(metadataFile).delete();}
+        }
     }
+
+    /** Recovery remains available if a device interruption stops the finally block. */
+    static void recover(Activity activity,JS js,Check check,Click click) throws Exception {
+        JSONObject original=new JSONObject(new String(read(new File(activity.getCacheDir(),METADATA),32*1024*1024),StandardCharsets.UTF_8));
+        NativeDocumentWorkflowChecks.WorkspaceSnapshot saved=boundCheckpoint(activity,original);
+        restore(activity,js,check,click,saved,original);
+    }
+
+    private static void restore(Activity activity,JS js,Check check,Click click,
+                                NativeDocumentWorkflowChecks.WorkspaceSnapshot saved,JSONObject original)throws Exception {
+        boundCheckpoint(activity,original);
+        js.run("if(window.__standaloneQA){window.DraftNative=window.__standaloneQA.real;delete window.__standaloneQA;}return true;");
+        if("true".equals(js.run("window.Draft2Done.info().busy&&!!document.querySelector('[data-action=stop]')"))){click.run("[data-action=stop]");waitFor(js,"!window.Draft2Done.info().busy",15000);}
+        saved.restore(activity,js::run,click::run);
+        boolean localPresent=original.getBoolean("localPresent"),nativePresent=original.getBoolean("nativePresent");
+        String localRaw=localPresent?original.getString("localRaw"):null,nativeRaw=nativePresent?original.getString("nativeRaw"):null;
+        String authority=nativePresent?nativeRaw:localRaw;
+        js.run("window.NativeEvents.pause=()=>{};window.addEventListener('pagehide',e=>e.stopImmediatePropagation(),true);document.addEventListener('visibilitychange',e=>e.stopImmediatePropagation(),true);const e=document.querySelector('#paste-draft');if(e){e.value="+JSONObject.quote(original.getString("displayText"))+";let p={};try{p=JSON.parse("+JSONObject.quote(authority==null?"null":authority)+")||{};}catch(_){}const a=Number.isInteger(p.start)?Math.max(0,Math.min(e.value.length,p.start)):0,b=Number.isInteger(p.end)?Math.max(a,Math.min(e.value.length,p.end)):a;e.setSelectionRange(a,b);e.scrollTop=Number.isFinite(p.scroll)?Math.max(0,p.scroll):0;e.dispatchEvent(new Event('input',{bubbles:true}));}if(window.DraftNative.saveDraftInput("+JSONObject.quote(nativePresent?nativeRaw:"")+")!=='ok')throw Error('Native input restoration failed');"+(localPresent?"localStorage.setItem('draft2done-paste-draft',"+JSONObject.quote(localRaw)+");":"localStorage.removeItem('draft2done-paste-draft');")+"setTimeout(()=>location.reload(),80);return true;");
+        Thread.sleep(1000);waitFor(js,"!!window.Draft2Done&&!!document.querySelector('#paste-draft')",20000);
+        check.run(saved.matchesDisk(activity),"Standalone QA restores exact original workspace and backup bytes");
+        check.run(saved.matchesState(js::run),"Standalone QA restores all original projects, active selection, settings, profiles and notes");
+        String actualLocal=decode(js.run("localStorage.getItem('draft2done-paste-draft')")),actualNative=nativeStage(js);
+        check.run((localPresent?localRaw.equals(actualLocal):actualLocal==null)&&(nativePresent?nativeRaw.equals(actualNative):actualNative==null),"Standalone QA restores exact native and browser pending input, including absence");
+        check.run("true".equals(js.run("return document.querySelector('#paste-draft').value==="+JSONObject.quote(original.getString("displayText"))+";")),"Standalone QA reloads the user's original pending input into normal app memory");
+        check.run(original.getString("account").equals(accountFingerprint(js)),"Standalone QA preserves the connected account while restoring the user's original model preferences");
+        saved.clear(activity);new AtomicFile(new File(activity.getCacheDir(),METADATA)).delete();
+    }
+
+    private static NativeDocumentWorkflowChecks.WorkspaceSnapshot boundCheckpoint(Activity activity,JSONObject original)throws Exception {
+        String prefix=original.getString("prefix");if(!prefix.matches("Draft2Done-QA-[a-f0-9]{32}"))throw new IOException("Unknown standalone preservation prefix; data left untouched.");
+        JSONObject binding=new JSONObject(new String(read(new File(new File(activity.getCacheDir(),"qa-document-checkpoint"),"pending.json"),8192),StandardCharsets.UTF_8));
+        if(!prefix.equals(binding.getString("prefix")))throw new IOException("Standalone preservation does not own this workspace checkpoint; data left untouched.");
+        NativeDocumentWorkflowChecks.WorkspaceSnapshot saved=NativeDocumentWorkflowChecks.WorkspaceSnapshot.pending(activity);if(saved==null)throw new IOException("Standalone preservation checkpoint is unavailable.");return saved;
+    }
+    private static String nativeStage(JS js)throws Exception {
+        if(!"true".equals(js.run("typeof window.DraftNative.loadDraftInput==='function'&&typeof window.DraftNative.saveDraftInput==='function'")))throw new IOException("Standalone preservation requires native durable-input support.");
+        String raw=decode(js.run("window.DraftNative.loadDraftInput()"));return raw==null||"null".equals(raw)?null:raw;
+    }
+    private static String accountFingerprint(JS js)throws Exception {
+        String value=js.run("const s=JSON.parse(window.DraftNative.chatgptStatus());return {connected:!!s.connected,active:s.active||''};");
+        byte[] bytes=MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));StringBuilder out=new StringBuilder();for(byte b:bytes)out.append(String.format(Locale.ROOT,"%02x",b&255));return out.toString();
+    }
+    private static void writeMetadata(File file,JSONObject value)throws Exception {
+        byte[] bytes=value.toString().getBytes(StandardCharsets.UTF_8);if(bytes.length>32*1024*1024)throw new IOException("Standalone preservation metadata exceeds its private bound; input left untouched.");
+        AtomicFile atomic=new AtomicFile(file);FileOutputStream output=null;try{output=atomic.startWrite();output.write(bytes);atomic.finishWrite(output);}catch(Exception error){if(output!=null)atomic.failWrite(output);throw error;}
+    }
+    private static byte[] read(File file,int limit)throws Exception {
+        try(InputStream input=new AtomicFile(file).openRead()){ByteArrayOutputStream output=new ByteArrayOutputStream();byte[] bytes=new byte[8192];int count;while((count=input.read(bytes))!=-1){if(output.size()+count>limit)throw new IOException("Standalone preservation metadata exceeds its private bound.");output.write(bytes,0,count);}return output.toByteArray();}
+    }
+    private static String decode(String value)throws Exception {Object parsed=new JSONTokener(value).nextValue();return parsed==JSONObject.NULL?null:String.valueOf(parsed);}
     private static void waitFor(JS js,String predicate,int timeout)throws Exception {
         long deadline=System.currentTimeMillis()+timeout;
         while(System.currentTimeMillis()<deadline){if("true".equals(js.run(predicate)))return;Thread.sleep(150);}

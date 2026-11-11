@@ -2,52 +2,33 @@
 
 **Your Draft. Your Voice. Done.**
 
-Version 0.1.2 (Android version code 2). Android is the current priority; the Windows desktop app is deferred.
+Signed candidate: **Android 0.1.4, version code 3**. The published 0.1.2/code 2 release and its source checkpoint are preserved. Windows desktop work remains deferred.
 
-Draft2Done is an Android writing studio for papers you have already started. It protects the original, tracks approved additions, measures descriptive Writer DNA, and helps you develop the next part of your argument. Editing, saving, counts, DNA and local document tools work offline.
+**Normal Chrome sign-in now succeeds on the Moto G 2025 / Android 16.** The repaired APK is **852668 bytes**, SHA-256 `33435ac8a214729c7dabe7e6415528439e90509bfd6194cf8a4b418aea2ce6db`. Its temporary sign-in foreground service keeps the callback responsive while Chrome is open, then stops; the connected session survived the final Moto regressions and a real force-stop/restart. See [the sign-in repair report](docs/SIGN-IN-REPAIR-0.1.4.md) and [current verification](docs/VERIFICATION.md) for exact results and remaining checks. This repaired build has not been retested on the Samsung.
 
-The primary AI route connects your phone directly to your own eligible ChatGPT account over HTTPS. Helper, Complete and section regeneration show the exact full request before each send: current draft, assignment requirements, style measurements and included evidence excerpts. Each bounded generation round needs fresh approval. Account eligibility, available models and usage limits apply; an error stops the request without switching providers or using a paid API key.
+Draft2Done is a writing studio for papers you have already started. It protects the original, keeps generated continuations separate until approval, measures descriptive Writer DNA and stores projects locally. Editing, saving, counts, DNA and document tools work offline; no language model is bundled on the phone.
 
-The signed 0.1.2 APK and GitHub upload files are prepared in `D:\Draft2Done\current release` (Android 8+). Upload `Draft2Done-0.1.2.apk` and `latest.json` together to a manual GitHub Release tagged `v0.1.2`. The earlier user-published [v0.1.0 release](https://github.com/youriptvus/Draft2Done/releases/tag/v0.1.0) was independently verified. The default is the dark welcome screen; light mode is available in Settings. Automatic update checks target `youriptvus/Draft2Done` on GitHub and are enabled by default.
+The primary AI route connects Android directly to an eligible ChatGPT account over HTTPS. Each actual Helper, Complete or regeneration request previews the entire exact payload and needs fresh approval. Account credentials remain native and encrypted. The phone does not depend on the user's firewalled PC, USB forwarding or a paid API-key fallback. Free scholarly APIs are a separate optional research route.
 
-The application includes Helper and Complete modes, original/working draft separation, Writer DNA, assignment goals, review of generated sections, revision history, scholarly source retrieval, APA/MLA/Chicago author-date metadata citations, TXT/MD/DOCX/text-PDF import, document exports and project backups. The separate ChatGPT research flow sends its approved query and selected excerpts; it does not automatically include the paper.
+Version 0.1.4 adds a prominent **Paste Your Draft** entry, contextual information links that do not alter document text or exports, and the permanent Victoria Downs dedication in About. The unchanged web bundle passed the full host regression, including 107 JavaScript tests and the paste/link workflows; native protocol checks were rerun after the sign-in service patch. See [current verification](docs/VERIFICATION.md), [the historical pre-sign-in development report](docs/DEVELOPMENT-REPORT-0.1.4.md) and [the target-override brief](docs/RELEASE-BRIEF-0.1.4.md).
 
-No language model is bundled on the phone, so offline descriptive tools continue to work while AI generation waits for an available provider. Advanced Ollama, LM Studio and llama.cpp support remains for environments with a reachable server. The user's remote phone cannot depend on the PC behind its firewall, USB reverse or port forwarding.
+**0.1.4 is not yet fully verified.** An earlier Samsung web diagnostic returned `subscription_sharing_usage_limit_exceeded` (`invalid_request_error`) before completed output or search evidence. That preserved result does not establish the newly connected Moto account's current usage, reset time or hosted-search outcome. The sign-in repair verified authentication and eligible-model metadata without AI inference; writing and hosted web/citations were not rerun. Requested but unconfirmed web research is refused without saving a brief; no automatic account/model/billing fallback is used.
 
-On the Samsung, real ChatGPT sign-in, account model loading, Helper, Complete, regeneration and query-only research succeeded. Token refresh, sign-out revocation and normal reconnection also passed. Successful live ChatGPT web search and cited output remain unverified: controlled requests provided no confirmed search evidence and a final diagnostic ended in a service error. Requested web research is refused unless a completed search is confirmed. See [verification](docs/VERIFICATION.md) for the exact results and [model guidance](docs/MODELS.md) for tested and optional choices.
+Version 0.1.2 previously passed actual ChatGPT Helper/Complete/regeneration/query-only research, refresh/revocation/reconnection, native document save/reimport and software regression checks. Those historical results do not establish 0.1.4 results. See [current verification](docs/VERIFICATION.md) and [preserved 0.1.2 verification](docs/VERIFICATION-0.1.2.md).
 
-Development remains isolated to this directory. The native shell only serves bundled app assets; external sources are treated as untrusted text. Private signing materials stay in `signing/` and must be backed up separately, never published.
+Development stays in `D:\Draft2Done`. Private signing materials remain in ignored `signing/`. The local GitHub checkout is `D:\Draft2Done\repo\Draft2Done`; candidate files are prepared in `D:\Draft2Done\current release`. Required live AI acceptance checks remain unverified. Preparation does not stage, commit, push or publish. The user handles publication manually. The repair remains code 3, so replacing an earlier 0.1.4/code 3 installation requires an explicit install; the updater does not automatically deliver a same-code replacement.
 
-The local GitHub checkout is `D:\Draft2Done\repo\Draft2Done`. Add that folder in GitHub Desktop. `scripts\prepare-repo.ps1` copies source and verified `release-assets/` there and refreshes `D:\Draft2Done\current release`, without staging, committing or pushing; the user handles those actions manually. A source commit alone does not create a release. See [release instructions](docs/RELEASING.md) and [changes](docs/CHANGELOG.md).
-
-Useful documentation:
-
-- [User guide](docs/USER-GUIDE.md)
-- [Build and signing](docs/ANDROID-BUILD.md)
-- [Release/update procedure](docs/RELEASING.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [AI and research providers](docs/PROVIDERS.md) and [model guidance](docs/MODELS.md)
-- [User decisions](docs/DECISIONS.md) and [task tracker](docs/TASKS.md)
-- [Full brief and requirements mapping](docs/REQUIREMENTS.md)
-- [Verification and outstanding checks](docs/VERIFICATION.md)
-
-Build with a JDK and Node installed:
+The project uses the existing Android SDK pipeline, not Gradle. Once source is frozen, perform a clean candidate build with JDK 17+ and Node installed:
 
 ```powershell
 npm ci
-npm run build
-powershell -ExecutionPolicy Bypass -File scripts\build-android.ps1 -SkipWebBuild
-```
-
-The build acquires its own Android SDK in `tools/` and verifies the APK's payload paths, alignment and signature. It uses a persistent release key. Existing user projects survive same-key APK updates.
-
-```powershell
-npm test
-npm run test:ui
-npm run test:documents
-powershell -ExecutionPolicy Bypass -File scripts\test-oauth.ps1
-powershell -ExecutionPolicy Bypass -File scripts\test-updates.ps1
+powershell -ExecutionPolicy Bypass -File scripts\build-android.ps1 -Clean
+powershell -ExecutionPolicy Bypass -File scripts\build-device-tests.ps1
 powershell -ExecutionPolicy Bypass -File scripts\test-all.ps1
 ```
 
-Browser tests need the project-local Chromium installed with `PLAYWRIGHT_BROWSERS_PATH=D:\Draft2Done\tools\playwright` and `npx playwright install chromium`. Device tests are a separate, same-key instrumentation APK under `build/device-tests`; they are not bundled into the released app.
+`-Clean` rebuilds generated web/native output while preserving SDK downloads, signing identity and older `dist` artifacts. It cannot be combined with `-SkipWebBuild`. The resulting candidate is `dist/Draft2Done-0.1.4.apk`; release readiness still requires the checks in VERIFICATION.md.
+
+Useful documentation: [user guide](docs/USER-GUIDE.md), [architecture](docs/ARCHITECTURE.md), [build/signing](docs/ANDROID-BUILD.md), [release procedure](docs/RELEASING.md), [requirements](docs/REQUIREMENTS.md), [decisions](docs/DECISIONS.md), [changes](docs/CHANGELOG.md), [providers](docs/PROVIDERS.md) and [model guidance](docs/MODELS.md).
+
+Browser tests use the project-local Chromium under `tools/playwright`. Device tests are a separate signed instrumentation APK and are not bundled into the release.

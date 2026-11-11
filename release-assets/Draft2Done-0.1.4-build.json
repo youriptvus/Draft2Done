@@ -1,0 +1,11 @@
+{
+    "minAndroid":  "8.0",
+    "targetSdk":  36,
+    "version":  "0.1.4",
+    "package":  "io.draft2done.app",
+    "sha256":  "33435ac8a214729c7dabe7e6415528439e90509bfd6194cf8a4b418aea2ce6db",
+    "minSdk":  26,
+    "bytes":  852668,
+    "versionCode":  3,
+    "file":  "Draft2Done-0.1.4.apk"
+}

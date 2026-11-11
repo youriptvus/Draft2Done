@@ -101,8 +101,9 @@ public final class ChatGPTConnection {
         final ServerSocket loginSocket;
         synchronized(this){
             if(listener!=null)throw new IllegalStateException("A ChatGPT sign-in is already open.");
-            loginSocket=new ServerSocket(0,2,InetAddress.getByName("127.0.0.1"));listener=loginSocket;loginRequest=requestId;
+            loginSocket=new ServerSocket(0,16,InetAddress.getByName("127.0.0.1"));listener=loginSocket;loginRequest=requestId;
         }
+        SignInKeepAliveService.Lease keepAlive=null;
         try{
             loginSocket.setSoTimeout(300000);
             JSONObject existing=null;String host,client;
@@ -116,10 +117,16 @@ public final class ChatGPTConnection {
             }
             String state=OAuthProtocol.random(32),nonce=OAuthProtocol.random(32),verifier=OAuthProtocol.random(64),redirect="http://127.0.0.1:"+loginSocket.getLocalPort()+"/auth/callback";
             String authorization=OAuthProtocol.authorization(client,host,redirect,state,nonce,verifier,existing==null?"":existing.optString("id_token"));
-            activity.runOnUiThread(()->{try{activity.startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(authorization)).addCategory(Intent.CATEGORY_BROWSABLE));}catch(Exception e){cancel(requestId);}});
-            long until=System.currentTimeMillis()+300000;Uri callback=null;
-            while(System.currentTimeMillis()<until){check(requestId);loginSocket.setSoTimeout((int)Math.max(1,until-System.currentTimeMillis()));try(Socket socket=loginSocket.accept()){socket.setSoTimeout(5000);BufferedReader reader=new BufferedReader(new InputStreamReader(socket.getInputStream(),StandardCharsets.US_ASCII));String first=boundedLine(reader,8192);if(first==null)continue;String[] parts=first.split(" ");if(parts.length!=3||!"GET".equals(parts[0]))continue;Uri uri=Uri.parse("http://127.0.0.1"+parts[1]);boolean valid="/auth/callback".equals(uri.getPath())&&OAuthProtocol.same(state,uri.getQueryParameter("state"));String body=OAuthProtocol.callbackHTML(valid);byte[] bytes=body.getBytes(StandardCharsets.UTF_8);OutputStream output=socket.getOutputStream();output.write(("HTTP/1.1 "+(valid?"200 OK":"400 Bad Request")+"\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nConnection: close\r\nContent-Length: "+bytes.length+"\r\n\r\n").getBytes(StandardCharsets.US_ASCII));output.write(bytes);output.flush();if(valid){callback=uri;break;}}}
-            if(callback==null)throw new IllegalStateException("Sign-in timed out. Return to Settings and try again.");
+            // Android can freeze a cached Activity while its browser is visible.
+            // Become a bounded foreground operation before leaving this app.
+            keepAlive=SignInKeepAliveService.start(activity,requestId,()->cancel(requestId));
+            check(requestId);
+            activity.runOnUiThread(()->{try{check(requestId);activity.startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(authorization)).addCategory(Intent.CATEGORY_BROWSABLE));}catch(Exception e){cancel(requestId);}});
+            // Browsers can open speculative sockets without sending a request.
+            // A failed peer must not close the listener for the actual OAuth return.
+            final Uri callback;
+            try{callback=Uri.parse(LoopbackCallbackServer.await(loginSocket,state,300000,()->check(requestId)).toString());}
+            catch(SocketTimeoutException expired){throw new IllegalStateException("Sign-in timed out. Return to Settings and choose Continue with ChatGPT to try again.",expired);}
             if(callback.getQueryParameter("error")!=null)throw new IllegalStateException("ChatGPT sign-in or plan permission was declined. You can still use free research and local AI.");
             client=ChatGPTRegistration.callbackClient(client,callback.getQueryParameter("client_id"));
             String code=callback.getQueryParameter("code");if(code==null||code.isEmpty()||code.length()>8192)throw new SecurityException("No valid authorization code was returned.");
@@ -136,9 +143,8 @@ public final class ChatGPTConnection {
             check(requestId);
             synchronized(this){JSONArray all=accounts();boolean replaced=false;for(int i=0;i<all.length();i++){JSONObject a=all.getJSONObject(i);if(client.equals(a.optString("client_id"))){if(!record.getString("subject").equals(a.getString("subject")))throw new SecurityException("Account identity changed.");ChatGPTResearchStatus.retain(a,record);all.put(i,record);replaced=true;break;}}if(!replaced)all.put(record);vault.put("active",client);ChatGPTRegistration.completed(vault,host,client);saveVault();clearSignInError();}
             return new JSONObject(status());
-        }finally{try{loginSocket.close();}finally{synchronized(this){if(listener==loginSocket){listener=null;loginRequest="";}}}}
+        }finally{try{loginSocket.close();}finally{synchronized(this){if(listener==loginSocket){listener=null;loginRequest="";}}if(keepAlive!=null)keepAlive.close();}}
     }
-    private static String boundedLine(BufferedReader reader,int max)throws Exception{StringBuilder out=new StringBuilder();int c;while((c=reader.read())!=-1){if(c=='\n')break;if(out.length()>=max)throw new IllegalArgumentException("Callback request is too long.");if(c!='\r')out.append((char)c);}return out.length()==0&&c==-1?null:out.toString();}
     private void putTokens(JSONObject record,JSONObject tokens)throws Exception{String access=tokens.optString("access_token");if(access.isEmpty()||!"Bearer".equalsIgnoreCase(tokens.optString("token_type","Bearer")))throw new SecurityException("ChatGPT did not provide a supported access token.");record.put("access_token",access);if(tokens.has("refresh_token"))record.put("refresh_token",tokens.getString("refresh_token"));if(tokens.has("id_token"))record.put("id_token",tokens.getString("id_token"));if(tokens.has("scope"))record.put("scope",tokens.getString("scope"));record.put("expires_at",System.currentTimeMillis()+Math.max(0,tokens.optLong("expires_in",3600))*1000);}
     private String accessToken(String id)throws Exception{
         synchronized(refreshLock){

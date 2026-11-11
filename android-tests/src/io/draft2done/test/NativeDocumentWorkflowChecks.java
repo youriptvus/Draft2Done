@@ -45,7 +45,10 @@ final class NativeDocumentWorkflowChecks {
         this.instrumentation=instrumentation;this.activity=activity;this.evaluate=evaluate;this.click=click;this.check=check;automation=instrumentation.getUiAutomation();
     }
     static void run(Instrumentation instrumentation,Activity activity,Evaluator evaluate,Clicker click,Checker check)throws Exception {
-        new NativeDocumentWorkflowChecks(instrumentation,activity,evaluate,click,check).run();
+        new NativeDocumentWorkflowChecks(instrumentation,activity,evaluate,click,check).run(true);
+    }
+    static void quickImport(Instrumentation instrumentation,Activity activity,Evaluator evaluate,Clicker click,Checker check)throws Exception {
+        new NativeDocumentWorkflowChecks(instrumentation,activity,evaluate,click,check).run(false);
     }
     static void recover(Instrumentation instrumentation,Activity activity,Evaluator evaluate,Clicker click,Checker check)throws Exception {
         WorkspaceSnapshot checkpoint=WorkspaceSnapshot.pending(activity);
@@ -91,7 +94,7 @@ final class NativeDocumentWorkflowChecks {
         }
         check.check(true,"Removed only the three exact fictional export filenames and retained private pre-recovery copies");
     }
-    private void run()throws Exception {
+    private void run(boolean full)throws Exception {
         Thread.sleep(1800);
         WorkspaceSnapshot saved=new WorkspaceSnapshot(activity,evaluate,prefix);
         AccessibilityServiceInfo service=automation.getServiceInfo();int originalFlags=service.flags;
@@ -116,7 +119,7 @@ final class NativeDocumentWorkflowChecks {
             check.check(text.contains(MARKER),"Created a separate fictional paper for real Android document workflows");
             export("txt",names[0]);
             check.check(Arrays.equals(text.getBytes(StandardCharsets.UTF_8),waitFile(names[0])),"Android Save document writes exact UTF-8 TXT bytes in Downloads");
-            export("docx",names[1]);
+            if(full){export("docx",names[1]);
             check.check(docxContains(waitFile(names[1]),MARKER),"Android Save document writes a DOCX whose document XML contains the fictional draft");
             openPrintPreview();
             automation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK);
@@ -125,13 +128,23 @@ final class NativeDocumentWorkflowChecks {
             export("pdf",names[2]);
             byte[] pdf=waitFile(names[2]);
             check.check(pdf.length>1000&&new String(pdf,0,Math.min(5,pdf.length),StandardCharsets.US_ASCII).equals("%PDF-"),"Android Print Save as PDF creates a physical PDF file in Downloads");
-            try(OutputStream out=new FileOutputStream(new File(activity.getExternalFilesDir("qa"),"document-roundtrip.pdf"))){out.write(pdf);}
-            for(String name:names){
+            try(OutputStream out=new FileOutputStream(new File(activity.getExternalFilesDir("qa"),"document-roundtrip.pdf"))){out.write(pdf);}}
+            for(String name:full?names:new String[]{names[0]}){
                 String before=evaluate.evaluate("window.Draft2Done.getState().activeId");
+                evaluate.evaluate("window.__qaDocumentDelivery=null;const prior=window.NativeEvents.imported;window.NativeEvents.imported=function(payload){window.NativeEvents.imported=prior;let value=typeof payload==='string'?JSON.parse(payload):payload;window.__qaDocumentDelivery={nameMatches:value.name==="+JSONObject.quote(name)+",mime:value.mime||'',base64Length:(value.base64||'').length};return prior(payload);};return true;");
                 evaluate.evaluate("window.DraftNative.importDocument();return true;");waitPicker();navigateDownloads();openOwnFile(name);
-                waitJS("window.Draft2Done.getState().activeId!=="+before+"&&(()=>{const s=window.Draft2Done.getState();return s.projects.find(p=>p.id===s.activeId)?.originalText.replace(/\\s+/g,' ').includes("+JSONObject.quote(MARKER)+");})()",30000);
+                try{waitJS("window.Draft2Done.getState().activeId!=="+before+"&&(()=>{const s=window.Draft2Done.getState();return s.projects.find(p=>p.id===s.activeId)?.originalText.replace(/\\s+/g,' ').includes("+JSONObject.quote(MARKER)+");})()",30000);}
+                catch(Exception failure){
+                    captureChooser("document-import-failure");
+                    String diagnostic=evaluate.evaluate("const s=window.Draft2Done.getState();const p=s.projects.find(p=>p.id===s.activeId);const toast=document.querySelector('.toast');return {delivery:window.__qaDocumentDelivery,activeChanged:s.activeId!=="+before+",activeTitleMatches:p?.title==="+JSONObject.quote(prefix)+",textHasMarker:!!p?.originalText.includes("+JSONObject.quote(MARKER)+"),importError:toast&&toast.textContent.startsWith('Import failed:')?toast.textContent.slice(0,300):'',lastError:window.Draft2Done.info().lastError?'JavaScript error recorded':''};");
+                    check.check(false,"Native import diagnostic for "+name.substring(name.lastIndexOf('.')+1)+": "+diagnostic);throw failure;
+                }
+                evaluate.evaluate("delete window.__qaDocumentDelivery;return true;");
                 check.check("true".equals(evaluate.evaluate("const s=window.Draft2Done.getState();const p=s.projects.find(p=>p.id===s.activeId);return p.originalText.replace(/\\s+/g,' ').includes('When people talk about cities')&&p.workingText.replace(/\\s+/g,' ').includes("+JSONObject.quote(MARKER)+");")),"Real Android Open document imports the saved "+name.substring(name.lastIndexOf('.')+1).toUpperCase()+" text into a new protected draft");
             }
+        } catch(Exception failure) {
+            try{captureChooser("document-workflow-failure");}catch(Exception ignored){}
+            throw failure;
         } finally {
             instrumentation.removeMonitor(location);
             try {
@@ -243,15 +256,28 @@ final class NativeDocumentWorkflowChecks {
     }
     private void openOwnFile(String name)throws Exception {
         ownName(name);
-        AccessibilityNodeInfo file=find(n->text(n).equals(name)&&n.isVisibleToUser());
+        AccessibilityNodeInfo file=find(n->fileLabel(n,name));
         if(file==null){
             press(waitNode(n->description(n).equalsIgnoreCase("Search")||id(n).endsWith("/option_menu_search"),10000,"Could not locate the QA file or picker search"));
             AccessibilityNodeInfo search=waitNode(n->n.isEditable()&&n.isVisibleToUser(),10000,"Picker search field is unavailable");
             Bundle query=new Bundle();query.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,name);search.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,query);search.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
             automation.injectInputEvent(new KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_ENTER),true);automation.injectInputEvent(new KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_ENTER),true);
-            file=waitNode(n->text(n).equals(name)&&n.isVisibleToUser(),15000,"The exact QA file was not shown in Downloads");
+            file=waitNode(n->fileLabel(n,name),15000,"The exact QA file was not shown in Downloads");
         }
-        press(file);returnToApp();
+        press(file);Thread.sleep(700);
+        if(foreground().equals("com.sec.android.app.myfiles")||foreground().contains("documentsui")){
+            captureChooser("document-open-selection");
+            AccessibilityNodeInfo confirm=find(n->n.isVisibleToUser()&&n.isEnabled()&&
+                (text(n).equalsIgnoreCase("Open")||text(n).equalsIgnoreCase("Select")||text(n).equalsIgnoreCase("Done")||text(n).equalsIgnoreCase("Select file")));
+            if(confirm!=null)press(confirm);
+            else throw new IOException("The exact QA file was selected but the document picker has not completed the open action");
+        }
+        waitUntil(()->"io.draft2done.app".equals(foreground()),20000,"Selected document did not return to Draft2Done");Thread.sleep(600);
+    }
+    private static boolean fileLabel(AccessibilityNodeInfo node,String name){
+        // Search contains the same UUID filename. It is not a file result.
+        return text(node).equals(name)&&node.isVisibleToUser()&&!editable(node)
+            &&!id(node).contains("search")&&!String.valueOf(node.getClassName()).contains("EditText");
     }
     private byte[] waitFile(String name)throws Exception {
         long deadline=System.currentTimeMillis()+20000;byte[] previous=new byte[0];int stable=0;
@@ -290,7 +316,7 @@ final class NativeDocumentWorkflowChecks {
     private static String description(AccessibilityNodeInfo node){return node.getContentDescription()==null?"":node.getContentDescription().toString();}
     private static String id(AccessibilityNodeInfo node){return node.getViewIdResourceName()==null?"":node.getViewIdResourceName();}
     private static boolean contains(AccessibilityNodeInfo node,String value){if(text(node).equalsIgnoreCase(value)||description(node).equalsIgnoreCase(value))return true;for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo child=node.getChild(i);if(child!=null&&contains(child,value))return true;}return false;}
-    private static void press(AccessibilityNodeInfo node)throws IOException {for(AccessibilityNodeInfo current=node;current!=null;current=current.getParent())if(current.isEnabled()&&current.isVisibleToUser()&&current.isClickable()&&current.performAction(AccessibilityNodeInfo.ACTION_CLICK))return;throw new IOException("The requested document control could not be activated");}
+    private static void press(AccessibilityNodeInfo node)throws IOException {for(AccessibilityNodeInfo current=node;current!=null;current=current.getParent())if(current.isEnabled()&&current.isVisibleToUser()&&current.isClickable()&&current.performAction(AccessibilityNodeInfo.ACTION_CLICK))return;throw new IOException("The requested document control could not be activated: "+id(node)+" / "+String.valueOf(node.getClassName()));}
     private static String decode(String raw)throws Exception {return (String)new JSONTokener(raw).nextValue();}
     private static byte[] bytes(InputStream input,int limit)throws IOException {ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buffer=new byte[8192];int count;while((count=input.read(buffer))!=-1){if(out.size()+count>limit)throw new IOException("QA data exceeded its size limit");out.write(buffer,0,count);}return out.toByteArray();}
     private static boolean docxContains(byte[] bytes,String marker)throws IOException {try(ZipInputStream zip=new ZipInputStream(new ByteArrayInputStream(bytes))){ZipEntry entry;while((entry=zip.getNextEntry())!=null)if("word/document.xml".equals(entry.getName()))return new String(bytes(zip,2*1024*1024),StandardCharsets.UTF_8).contains(marker);}return false;}
@@ -299,7 +325,7 @@ final class NativeDocumentWorkflowChecks {
         for(String extension:new String[]{"txt","docx","pdf","PDF"})try(ParcelFileDescriptor descriptor=instrumentation.getUiAutomation().executeShellCommand("rm -f "+DOWNLOADS+prefix+"."+extension);InputStream in=new ParcelFileDescriptor.AutoCloseInputStream(descriptor)){bytes(in,1024);}
     }
 
-    private static final class WorkspaceSnapshot {
+    static final class WorkspaceSnapshot {
         private final byte[] primary,backup;
         private final String state,prefix;
         WorkspaceSnapshot(Activity activity,Evaluator evaluate,String prefix)throws Exception {

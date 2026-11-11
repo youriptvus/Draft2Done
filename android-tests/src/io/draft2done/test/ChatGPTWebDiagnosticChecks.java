@@ -157,6 +157,7 @@ final class ChatGPTWebDiagnosticChecks {
     private static final class Inspector {
         final JSONObject eventCounts=new JSONObject(),sseNames=new JSONObject(),itemTypes=new JSONObject(),responseTypes=new JSONObject(),annotationTypes=new JSONObject();
         final JSONObject itemStatuses=new JSONObject(),responseStatuses=new JSONObject();
+        final JSONArray errors=new JSONArray();
         final Set<String> annotationKeys=new TreeSet<>();
         String terminalEvent="missing",terminalStatus="missing";
         JSONObject terminalItems=new JSONObject();
@@ -167,11 +168,13 @@ final class ChatGPTWebDiagnosticChecks {
             JSONObject event;
             try{event=new JSONObject(raw);}catch(Exception ignored){increment(eventCounts,"invalid_json");return;}
             String type=safeName(event.optString("type"));increment(eventCounts,type);
+            if("error".equals(type))recordError(event.optJSONObject("error")==null?event:event.optJSONObject("error"));
             if("error".equals(type)){terminalEvent=type;terminalStatus="missing";terminalItems=new JSONObject();terminalStatuses=new JSONObject();}
             JSONObject item=event.optJSONObject("item");
             if(item!=null){increment(group(itemTypes,type),item.optString("type"));increment(group(group(itemStatuses,type),item.optString("type")),item.optString("status"));}
             JSONObject response=event.optJSONObject("response");
             if(response!=null){
+                if(response.optJSONObject("error")!=null)recordError(response.optJSONObject("error"));
                 JSONArray output=response.optJSONArray("output");
                 if(output!=null)for(int index=0;index<output.length();index++){
                     JSONObject outputItem=output.optJSONObject(index);
@@ -215,7 +218,20 @@ final class ChatGPTWebDiagnosticChecks {
                 .put("outputItemStatusObservationsByEvent",itemStatuses).put("responseOutputStatusObservationsByEvent",responseStatuses)
                 .put("terminalEventType",terminalEvent).put("terminalStatus",terminalStatus).put("terminalOutputItemTypes",terminalItems)
                 .put("terminalOutputItemStatuses",terminalStatuses)
-                .put("annotationTypeObservationsByEvent",annotationTypes).put("annotationKeyNames",new JSONArray(annotationKeys));
+                .put("annotationTypeObservationsByEvent",annotationTypes).put("annotationKeyNames",new JSONArray(annotationKeys))
+                .put("providerErrors",errors);
+        }
+        void recordError(JSONObject error)throws Exception {
+            if(error==null||errors.length()>=4)return;
+            JSONObject safe=new JSONObject().put("code",safeName(error.optString("code")))
+                .put("parameter",safeName(error.optString("param"))).put("type",safeName(error.optString("type")));
+            // Never record arbitrary provider prose. These fixed flags distinguish
+            // request/tool rejection from usage/policy failure without secrets.
+            String message=error.optString("message").toLowerCase(java.util.Locale.ROOT);
+            JSONArray mentions=new JSONArray();
+            for(String term:new String[]{"web_search","tool_choice","unsupported","not supported","not allowed","policy","usage","limit","required","include","model"})
+                if(message.contains(term))mentions.put(term);
+            safe.put("messageTerms",mentions);errors.put(safe);
         }
     }
     private static JSONObject group(JSONObject groups,String name)throws Exception {

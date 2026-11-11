@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Runs Draft2Done host checks, with optional tests against the authorized Samsung.
+Runs Draft2Done host checks, with optional tests against an explicitly selected Android device.
 .DESCRIPTION
 The default run rebuilds web assets, then runs logic, OAuth/request lifecycle,
 update validation, browser workflow and document checks. It does not sign APKs,
@@ -28,7 +28,8 @@ param(
     [switch]$InstallApks,
     [switch]$SkipHost,
     [ValidateRange(1,65535)][int]$AdbServerPort = 5038,
-    [ValidatePattern('^[A-Za-z0-9._:-]+$')][string]$Serial = 'R5GL75PGMFP'
+    [ValidatePattern('^[A-Za-z0-9._:-]+$')][string]$Serial = 'R5GL75PGMFP',
+    [ValidateSet('samsung','motorola')][string]$ExpectedManufacturer = 'samsung'
 )
 $ErrorActionPreference = 'Stop'
 if (($LiveAI -or $InstallApks) -and !$Device) { throw '-LiveAI and -InstallApks require -Device.' }
@@ -94,15 +95,17 @@ try {
         Invoke-TestStep 'Document roundtrips and optional add-on UI' { Invoke-NativeChecked 'npm.cmd' @('run','test:documents') }
         Invoke-TestStep 'Proposal, profile, revision and research review workflows' { Invoke-NativeChecked 'npm.cmd' @('run','test:review') }
         Invoke-TestStep 'Assignment, saved voice and project management workflows' { Invoke-NativeChecked 'npm.cmd' @('run','test:management') }
+        Invoke-TestStep 'Pasted draft safety and About dedication' { Invoke-NativeChecked 'npm.cmd' @('run','test:paste') }
+        Invoke-TestStep 'Contextual information links and source consent (simulated responses)' { Invoke-NativeChecked 'npm.cmd' @('run','test:information') }
     }
 
     if ($Device) {
-        Invoke-TestStep 'Authorized Samsung and installed test packages' {
+        Invoke-TestStep 'Authorized Android device and installed test packages' {
             if (!(Test-Path -LiteralPath $adb)) { throw 'Project-local ADB is missing. Run scripts/setup-android.ps1.' }
             $state = (& $adb @adbArguments get-state 2>&1 | Out-String).Trim()
-            if ($LASTEXITCODE -ne 0 -or $state -ne 'device') { throw "Samsung $Serial is not authorized on ADB port $AdbServerPort. Existing ADB servers were left running." }
+            if ($LASTEXITCODE -ne 0 -or $state -ne 'device') { throw "Android device $Serial is not authorized on ADB port $AdbServerPort. Existing ADB servers were left running." }
             $manufacturer = (& $adb @adbArguments shell getprop ro.product.manufacturer | Out-String).Trim()
-            if ($LASTEXITCODE -ne 0 -or $manufacturer -ne 'samsung') { throw 'The explicit serial must identify the authorized Samsung.' }
+            if ($LASTEXITCODE -ne 0 -or $manufacturer -ne $ExpectedManufacturer) { throw "The explicit serial must identify the authorized $ExpectedManufacturer device." }
             if ($InstallApks) {
                 $release = Join-Path (Join-Path $projectRoot 'dist') $releaseInfo.ApkFileName
                 $harness = Join-Path $projectRoot 'build\device-tests\Draft2Done-device-tests.apk'

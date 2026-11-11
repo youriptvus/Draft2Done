@@ -1612,3 +1612,127 @@ main {
 .task-bar {
   pointer-events: auto;
 }
+
+/* Draft intake and the permanent About dedication. */
+.paste-card {
+  padding: 20px;
+  margin: 0 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.paste-card > label {
+  display: block;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.4px;
+}
+.paste-card > p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 7px 0 12px;
+}
+.paste-card textarea {
+  display: block;
+  min-height: 150px;
+  max-height: min(450px, 55vh);
+  overflow-y: auto;
+  font-size: 16px;
+  resize: vertical;
+}
+.paste-card small {
+  display: block;
+  min-height: 36px;
+  margin: 10px 0 12px;
+}
+.paste-card .paste-warning {
+  color: var(--warning);
+}
+.paste-card > button {
+  width: 100%;
+}
+.modal-body .about-dedication {
+  border-left: 3px solid var(--accent);
+  padding: 14px 16px;
+  margin: 18px 0;
+  background: var(--accent-light);
+  border-radius: 0 8px 8px 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+/* Optional, non-destructive research reading view. The editor remains native. */
+.information-reader {
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+.information-reader .information-copy {
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow: auto;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.9;
+  user-select: text;
+}
+.information-reader > p,
+.information-reader > small {
+  color: var(--muted);
+  line-height: 1.7;
+}
+.information-link {
+  display: inline;
+  border: 0;
+  padding: 3px 1px;
+  margin: 0;
+  border-radius: 3px;
+  color: var(--accent);
+  background: transparent;
+  font: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+  user-select: text;
+}
+.information-link:hover,
+.information-link:focus-visible {
+  background: var(--accent-light);
+}
+.information-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.information-sources {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 20px;
+}
+.information-sources > article {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.information-sources h3 {
+  margin: 0 0 7px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.information-sources small {
+  display: block;
+  line-height: 1.7;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.information-sources button {
+  margin-top: 8px;
+  min-height: 44px;
+}

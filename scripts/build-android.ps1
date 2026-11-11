@@ -1,5 +1,6 @@
-param([switch]$SkipWebBuild)
+param([switch]$SkipWebBuild,[switch]$Clean)
 $ErrorActionPreference = 'Stop'
+if ($Clean -and $SkipWebBuild) { throw '-Clean requires rebuilding the web assets; omit -SkipWebBuild.' }
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'release-info.ps1')
 $releaseInfo = Get-Draft2DoneReleaseInfo $projectRoot
@@ -28,11 +29,22 @@ if (!$jdkRoot) { throw 'A JDK 17 or newer is required. Set JAVA_HOME to its inst
 $javaExe = Join-Path $jdkRoot 'bin\java.exe'
 $javacExe = Join-Path $jdkRoot 'bin\javac.exe'
 $keytoolExe = Join-Path $jdkRoot 'bin\keytool.exe'
+if ($Clean -and (Test-Path -LiteralPath $webRoot)) {
+    $resolvedWebRoot = [IO.Path]::GetFullPath($webRoot)
+    if ([IO.Path]::GetDirectoryName($resolvedWebRoot) -ne [IO.Path]::GetFullPath($projectRoot) -or
+        [IO.Path]::GetFileName($resolvedWebRoot) -cne 'web-dist' -or
+        (Get-Item -LiteralPath $resolvedWebRoot -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Unsafe generated web output path.' }
+    Remove-Item -LiteralPath $resolvedWebRoot -Recurse -Force
+}
 if (!$SkipWebBuild) {
     Push-Location $projectRoot
     try { Invoke-Checked 'npm.cmd' @('run','build:web') } finally { Pop-Location }
 }
 if (!(Test-Path -LiteralPath (Join-Path $webRoot 'index.html'))) { throw 'Web assets are missing. Run npm run build:web first.' }
+$webVersionPath = Join-Path $webRoot 'version.json'
+if (!(Test-Path -LiteralPath $webVersionPath -PathType Leaf)) { throw 'Bundled web version is missing. Rebuild the web assets.' }
+$webVersion = Get-Content -LiteralPath $webVersionPath -Raw | ConvertFrom-Json
+if ($webVersion.version -cne $releaseInfo.VersionName) { throw 'Bundled web version does not match the Android/package release. Rebuild the web assets before signing.' }
 # Only generated Android output is replaced. Never clean signing/ or dist/.
 $resolvedBuildRoot = [IO.Path]::GetFullPath($buildRoot)
 if (!$resolvedBuildRoot.StartsWith([IO.Path]::GetFullPath($projectRoot) + [IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe Android build path.' }
@@ -74,7 +86,7 @@ try {
 finally { $zip.Dispose() }
 $checkZip=[IO.Compression.ZipFile]::OpenRead($unsigned)
 try {
-    foreach($required in @('assets/web/index.html','assets/web/app.js','assets/web/styles.css','assets/web/pdf.worker.min.mjs','classes.dex')) {
+    foreach($required in @('assets/web/index.html','assets/web/app.js','assets/web/styles.css','assets/web/pdf.worker.min.mjs','assets/web/version.json','classes.dex')) {
         if(!$checkZip.GetEntry($required)){throw "Missing required APK payload: $required"}
     }
     if(@($checkZip.Entries | Where-Object { $_.FullName.Contains('\') }).Count){throw 'Invalid backslash in an APK entry.'}

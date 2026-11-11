@@ -7,7 +7,7 @@ credentials, app data, tools and test results are never copied. The workspace's
 current release folder receives only the current verified assets and instructions.
 #>
 [CmdletBinding()]
-param([string]$RepositoryPath)
+param([string]$RepositoryPath,[switch]$Candidate)
 $ErrorActionPreference = 'Stop'
 $sourceRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 . (Join-Path $PSScriptRoot 'release-info.ps1')
@@ -111,6 +111,18 @@ Future updates need a higher Android versionCode and the same private release ke
 See docs/RELEASING.md. Keep the private signing directory backed up separately.
 The current account access/release availability limits are in docs/VERIFICATION.md.
 "@
+if ($Candidate) {
+    $instructions = @"
+# Candidate only — required verification remains incomplete
+
+This signed build is for review and testing. It is not a fully verified release.
+Read docs/VERIFICATION.md and docs/SIGN-IN-REPAIR-$($releaseInfo.VersionName).md
+for the exact blockers and actual test results before considering publication.
+No staging, commit, push or publication was performed.
+
+$instructions
+"@
+}
 Write-Draft2DoneReleaseText (Join-Path $releaseDestination 'README.md') $instructions
 New-Item -ItemType Directory -Force -Path $currentReleaseRoot | Out-Null
 foreach ($name in $releaseFiles) {
