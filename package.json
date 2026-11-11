@@ -1,0 +1,26 @@
+{
+  "name": "draft2done",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first academic writing studio for Android",
+  "scripts": {
+    "build": "node scripts/build-web.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:ui": "node tests/ui-smoke.mjs",
+    "test:documents": "node tests/documents-ui.mjs",
+    "test:review": "node tests/review-ui.mjs"
+  },
+  "dependencies": {
+    "buffer": "^6.0.3",
+    "docx": "9.5.1",
+    "mammoth": "1.11.0",
+    "pdfjs-dist": "4.10.38"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "playwright": "1.56.1",
+    "prettier": "^3.6.2"
+  }
+}

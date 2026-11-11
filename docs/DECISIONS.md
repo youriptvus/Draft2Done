@@ -1,0 +1,22 @@
+# User decisions and standing requirements
+
+Last updated 2026-11-10 (America/New_York).
+
+1. The original full project brief remains the feature and safety baseline: existing-draft-first, protected original, reviewable AI continuations, Writer DNA, local storage, offline editing, honest research/citations, no model downloads or paid calls without authorization.
+2. Android is now the immediate deliverable. Produce a signed APK. Windows is explicitly deferred until later; do not spend the current build on a desktop GUI.
+3. Use the user's Samsung phone over ADB for install and practical UI testing when connected and authorized. ADB initially found no device. Never claim device testing until it actually runs.
+4. Add optional Sign in with ChatGPT for information gathering, in addition to local AI and free scholarly APIs. Each user connects their own account. Use documented dynamic registration and OAuth, with user consent; no embedded API key or ChatGPT website scraping. A free ChatGPT sign-in alone does not grant plan inference. Eligible plan, model, tool and account policies apply.
+5. ChatGPT research requests show the exact query and selected excerpts and never silently transmit the full draft. The later standalone-phone requirement adds a separate direct ChatGPT writing route: full draft assistance requires a fresh explicit request preview and approval. No standard billable API-key fallback.
+6. UI must be as user friendly as possible: plain-language guidance, large touch targets, clear draft-to-review workflow, advanced settings out of the main path, honest actionable errors.
+7. All development, tools, signing files and outputs stay inside D:\Draft2Done. Existing unrelated software and model files remain unchanged. Keep Git checkpoints; no external publication.
+8. Automatic update checks are enabled by default and target the GitHub repository `youriptvus/Draft2Done`. Use published GitHub Release metadata. Downloads must match the installed app's package and signing certificate; Android controls the final installation confirmation. Preparing update artifacts does not authorize publishing a repository or release.
+9. Latest appearance decision: keep the dark theme as the default. Retain the elegant welcome screen with recent papers below, keep light mode optional, and match Android's system bars to the selected appearance. This supersedes the brief request to restore light mode.
+10. Raise the welcome-screen paper illustration so it clears the “Let’s finish this” line and keeps that text readable against the dark background.
+11. Continue the whole Android application through all task points, changes and tests; do not stop at an individual UI fix.
+12. From this point onward, automate tests, fixes, builds and device checks. Involve the user only when direct authentication is required. Existing restrictions on publication, unrelated projects, large model downloads and paid services remain in force.
+13. Provide strong models suited to research and writing. Recommendations must use the actual eligible account catalog; do not invent availability or silently download models. Preserve an explicit user selection unless they choose the recommended option.
+14. The deployed Android phone is remote from the user's PC, which is behind a firewall. It cannot depend on a PC model endpoint, USB reverse, port forwarding or a VPN. Phone-to-provider HTTPS is the primary AI route; PC-server support is optional advanced functionality for other environments/developer tests. Offline editing, saving, descriptive analysis and saved research remain available. There is no bundled on-phone language model.
+15. The user explicitly paused development, then asked to continue. Resume the saved work, including the standalone-phone architecture change, rather than treating the previously installed APK as the final deliverable.
+16. Prepare source changes and release assets locally in `D:\Draft2Done\repo\Draft2Done`, the checkout pointing to `youriptvus/Draft2Done`. Leave files unstaged; the user will commit and upload manually. Do not commit, push or publish. Private signing credentials remain outside that checkout.
+
+ChatGPT requires interactive account consent from the user. Subsequent diagnostics, tests and edits are automated. Implementation and protocol tests are distinct from successful account authentication or plan inference; the connected Samsung currently reports a usage limit for actual requests.

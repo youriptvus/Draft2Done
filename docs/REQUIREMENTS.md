@@ -1,0 +1,32 @@
+# Requirements and delivery scope
+
+The [original brief](ORIGINAL-BRIEF.md) is preserved verbatim. [User decisions](DECISIONS.md) record subsequent changes. The current deliverable is the signed Android APK; Windows desktop packaging remains deferred by the user's explicit choice.
+
+| Brief area | Android implementation | Verification or remaining boundary |
+| --- | --- | --- |
+| Project isolation | Dedicated directory, local Git, project-local tools and persistent private signing key | No publication, model download or unrelated project changes |
+| Existing-draft-first | Import or paste writing; immutable original and separate working text | Empty/short-draft refusal before AI transport |
+| Helper | Offline draft observations plus optional direct ChatGPT advice, questions and follow-up | Exact-request approval precedes each remote call; live ChatGPT inference is quota-blocked on the Samsung |
+| Complete | Word target, instructions/rubric, reviewed research plan, optional tail continuation, editable section proposals and direct ChatGPT regeneration | Accept/reject/regenerate, stale-anchor rejection and explicit shortfalls tested; every bounded remote round needs fresh consent |
+| Word counts | Original, accepted, proposed, minimum, maximum, remaining and percentage | Unicode words; standalone references and explicitly marked title blocks excluded by default |
+| Writer DNA | Length, vocabulary, punctuation, pronouns, transitions, repeated expressions, language cues, paragraph openings and spelling variants | Descriptive measurements, editable reusable profiles and validated roundtrips; no authorship/proficiency guarantee |
+| Research | Crossref, PubMed and Wikipedia official APIs; short query consent, saved source library and evidence review | Live retrieval and record verification tested; abstracts do not establish claim truth |
+| Other research providers | OpenAlex, Semantic Scholar, government/university sources and general search investigated | No unsupported provider advertised as integrated; optional ChatGPT web search depends on account policy |
+| Citations | APA/MLA/Chicago author-date metadata, missing fields, manual correction, grouped paragraph citations and library bibliography | No invented locators; exhaustive citation types and Chicago footnotes are outside this release |
+| Standalone phone AI | Primary direct ChatGPT route through native HTTPS, eligible-account model catalog, terminal-response validation and cancellation | No PC endpoint required; unknown models, stale consent, incomplete responses and quota errors do not trigger provider fallback |
+| Advanced server AI | Optional Ollama and compatible OpenAI-style servers, discovery, context/settings, CPU option and cancellation | Requires a reachable configured server; unavailable to the user's remote phone behind the PC firewall. Existing local-model tests are developer/server evidence |
+| Offline operation | Editing, local storage, counts, descriptive DNA, import/export and saved research | No bundled on-phone LLM: generation needs an available approved provider. Offline analysis does not invent research findings |
+| Mobile interface | Dark default, optional light, large touch controls, elegant welcome, working editor, review and settings | Samsung portrait/landscape, keyboard and responsive browser checks |
+| Editing | Undo/Redo across tabs, paragraph navigation, Markdown controls, checkpoints and original comparison | Generated contribution ranges preserved through edits/undo |
+| Documents | TXT/MD/DOCX/text-PDF import; TXT/MD/DOCX/PDF and .d2d export | Independent DOCX readback and native byte tests; no OCR or exact original page layout |
+| Export presentation | Font, size, spacing, heading/bold/italic rendering and live bibliography preview | Existing references preserved; duplicate headings/identical entries avoided |
+| Storage/privacy | Atomic private workspace, previous-valid recovery, optional autosave, background flush and export backups | Actual cache-only fault tests. Direct writing consent previews the full immutable payload; changed draft/requirements/profile/model invalidate approval |
+| Untrusted inputs | Escaped UI, bounded documents/network, data-separated prompts and pinned-origin native bridge | No document or source can execute commands or select arbitrary file paths |
+| Settings | Appearance/autosave, backend/model/context, default mode/voice/citations/counts/export typography and providers | Local preferences; Android selects export destinations through its document picker |
+| ChatGPT account connection | Browser OAuth/PKCE, signed identity verification, encrypted native sessions, actual account model selection; primary writing and separate research routes | Live sign-in and catalog succeeded; plan requests returned an account/app usage-limit error. Successful inference and web-search availability remain unverified |
+| Model quality | Actual eligible-account recommendations; existing Llama and Qwen server comparisons, schema/context/citation checks and descriptive style evaluations | No unsupported claim of a best untested model, factual correctness or exact voice fidelity. No model downloaded; current optional-server tag compatibility is documented in MODELS.md |
+| Automatic updates | Default on, public stable GitHub releases at youriptvus/Draft2Done, checksum/package/version/certificate validation | Host/device rejection tests pass; publication/live delivery blocked by current GitHub account access and requires publication authorization |
+| QA and packaging | Unit, browser, document, native boundary, actual model/source tests, signed APK and install | See [verification](VERIFICATION.md) for executed results and honest model-quality findings |
+| Windows executable/installer | Deferred | Android priority supersedes the original Windows-first delivery order |
+
+An APK installs without VS Code. The production phone connects directly to ChatGPT when approved and available, while documents and offline tools remain local. A separate scholarly query can use public HTTPS APIs. Academic claims, citations, model reasoning and voice consistency require review; passing software tests does not prove the correctness of a generated paper.
